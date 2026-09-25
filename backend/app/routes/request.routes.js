@@ -19,38 +19,49 @@ router.use((req, res, next) => {
 // User actions - join requests
 router.post(
   '/organization/:organization/requests',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, validateBody('joinRequest')],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  validateBody('joinRequest'),
   createJoinRequest
 );
 
-router.get(
-  '/user/requests',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
-  getUserJoinRequests
-);
+router.get('/user/requests', apiLimiter, authJwt.verifyToken, authJwt.isUser, getUserJoinRequests);
 
 router.delete(
   '/user/requests/:requestId',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   cancelJoinRequest
 );
 
 // Admin/owner actions - manage join requests
 router.get(
   '/organization/:organization/requests',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdmin,
   getOrgJoinRequests
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/approve',
-  [apiLimiter, oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdmin,
   approveJoinRequest
 );
 
 router.post(
   '/organization/:organization/requests/:requestId/deny',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdmin,
   denyJoinRequest
 );
 

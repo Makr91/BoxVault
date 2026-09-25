@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import {
   getVapidKey,
   createSubscription,
@@ -28,26 +29,26 @@ router.use((req, res, next) => {
 const notificationAuth = [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser];
 const subscriptionAuth = [authJwt.verifyToken, authJwt.isUser];
 
-router.get('/notifications/vapid-key', getVapidKey);
+router.get('/notifications/vapid-key', apiLimiter, getVapidKey);
 
-router.post('/notifications/subscriptions', subscriptionAuth, createSubscription);
+router.post('/notifications/subscriptions', apiLimiter, subscriptionAuth, createSubscription);
 
-router.delete('/notifications/subscriptions', subscriptionAuth, deleteSubscription);
+router.delete('/notifications/subscriptions', apiLimiter, subscriptionAuth, deleteSubscription);
 
-router.post('/notifications/test/toast', subscriptionAuth, sendTestToast);
+router.post('/notifications/test/toast', apiLimiter, subscriptionAuth, sendTestToast);
 
-router.post('/notifications/test/channel', subscriptionAuth, sendTestChannel);
+router.post('/notifications/test/channel', apiLimiter, subscriptionAuth, sendTestChannel);
 
-router.get('/notifications', notificationAuth, listNotifications);
+router.get('/notifications', apiLimiter, notificationAuth, listNotifications);
 
-router.get('/notifications/unread-count', notificationAuth, getUnreadCount);
+router.get('/notifications/unread-count', apiLimiter, notificationAuth, getUnreadCount);
 
-router.post('/notifications/read-all', notificationAuth, markAllNotificationsRead);
+router.post('/notifications/read-all', apiLimiter, notificationAuth, markAllNotificationsRead);
 
-router.delete('/notifications', notificationAuth, deleteAllNotifications);
+router.delete('/notifications', apiLimiter, notificationAuth, deleteAllNotifications);
 
-router.post('/notifications/:id/read', notificationAuth, markNotificationRead);
+router.post('/notifications/:id/read', apiLimiter, notificationAuth, markNotificationRead);
 
-router.delete('/notifications/:id', notificationAuth, deleteNotification);
+router.delete('/notifications/:id', apiLimiter, notificationAuth, deleteNotification);
 
 export default router;

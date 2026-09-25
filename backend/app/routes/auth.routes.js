@@ -199,21 +199,21 @@ const requireRegistrationOffered = async (req, res, next) => {
 
 router.post(
   '/auth/signup',
-  [
-    authLimiter,
-    requireLocalOffered,
-    requireRegistrationOffered,
-    validateBody('register'),
-    verifySignUp.checkRolesExisted,
-  ],
+  authLimiter,
+  requireLocalOffered,
+  requireRegistrationOffered,
+  validateBody('register'),
+  verifySignUp.checkRolesExisted,
   signup
 );
-router.post('/auth/signin', [authLimiter, requireLocalOffered, validateBody('login')], signin);
+router.post('/auth/signin', authLimiter, requireLocalOffered, validateBody('login'), signin);
 router.get('/auth/verify-mail/:token', authLimiter, verifyMail);
 router.get('/auth/validate-invitation/:token', authLimiter, validateInvitationToken);
 router.post(
   '/auth/invitations/:token/accept',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   acceptInvitation
 );
 // Invite management is gated per-org: the org's owners (UserOrg owner) and
@@ -222,49 +222,39 @@ router.post(
 // bypass inside isOrgAdminOrOwner).
 router.get(
   '/invitations/active/:organization',
-  [
-    apiLimiter,
-    oidcTokenRefresh,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-  ],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
   getActiveInvitations
 );
 router.post(
   '/auth/invite',
-  [
-    apiLimiter,
-    oidcTokenRefresh,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    validateBody('invitation'),
-    // Resolves the org from req.body.organization_name (no :organization segment).
-    // Externally-managed orgs are NOT rejected here: the controller delegates
-    // their invites to the auth server instead of writing a local invitation.
-    verifyOrgAccess.isOrgAdminOrOwner,
-  ],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  validateBody('invitation'),
+  // Resolves the org from req.body.organization_name (no :organization segment).
+  // Externally-managed orgs are NOT rejected here: the controller delegates
+  // their invites to the auth server instead of writing a local invitation.
+  verifyOrgAccess.isOrgAdminOrOwner,
   sendInvitation
 );
 router.delete(
   '/invitations/:invitationId',
-  [
-    apiLimiter,
-    oidcTokenRefresh,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    resolveInvitationOrg,
-    verifyOrgAccess.isOrgAdminOrOwner,
-  ],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  resolveInvitationOrg,
+  verifyOrgAccess.isOrgAdminOrOwner,
   deleteInvitation
 );
 
 // Token refresh endpoint - protected by verifyToken middleware
-router.post(
-  '/auth/refresh-token',
-  [apiLimiter, authJwt.verifyToken, oidcTokenRefresh],
-  refreshToken
-);
+router.post('/auth/refresh-token', apiLimiter, authJwt.verifyToken, oidcTokenRefresh, refreshToken);
 
 /**
  * @swagger

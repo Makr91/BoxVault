@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt, oidcTokenRefresh } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { getUserInfoClaims } from '../controllers/favorites/claims.js';
 import { getUserFavorites, saveUserFavorites } from '../controllers/favorites/user.js';
 
@@ -15,13 +16,19 @@ router.use((req, res, next) => {
 
 router.get(
   '/user/favorites',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
   getUserFavorites
 );
 
 router.put(
   '/user/favorites',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
   saveUserFavorites
 );
 
@@ -29,7 +36,10 @@ router.put(
 // Apply OIDC token refresh middleware before this route as it uses OIDC access token
 router.get(
   '/userinfo/claims',
-  [oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
   getUserInfoClaims
 );
 

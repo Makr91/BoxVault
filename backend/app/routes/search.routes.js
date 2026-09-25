@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { sessionAuth } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { search } from '../controllers/search/search.js';
 
 const router = Router();
@@ -10,6 +11,6 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/search', sessionAuth, search);
+router.get('/search', apiLimiter, sessionAuth, search);
 
 export default router;

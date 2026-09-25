@@ -1,6 +1,7 @@
 // version.routes.js
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { create } from '../controllers/version/create.js';
 import { update } from '../controllers/version/update.js';
 import { findAllByBox } from '../controllers/version/box/findall.js';
@@ -21,58 +22,63 @@ router.use((req, res, next) => {
 
 router.post(
   '/organization/:organization/box/:boxId/version',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    validateBody('version'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  validateBody('version'),
   create
 );
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    validateBody('version', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  validateBody('version', { partial: true }),
   update
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version',
-  [verifyOrgAccess.attachBox],
+  apiLimiter,
+  verifyOrgAccess.attachBox,
   findAllByBox
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [verifyOrgAccess.attachBox],
+  apiLimiter,
+  verifyOrgAccess.attachBox,
   findOne
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachBox],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
   deleteVersion
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/bulk',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    validateBody('bulkVersion'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  validateBody('bulkVersion'),
   bulkVersions
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.attachBox],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
   deleteAllByBox
 );
 

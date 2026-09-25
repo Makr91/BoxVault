@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { discoverOrganizations } from '../controllers/organization/discover.js';
 import { findAllWithUsers } from '../controllers/organization/findallwithusers.js';
 import { findOneWithUsers } from '../controllers/organization/findonewithusers.js';
@@ -54,110 +55,120 @@ router.use((req, res, next) => {
 });
 
 // Public organization discovery (uses sessionAuth to check if admin)
-router.get('/organizations/discover', sessionAuth, discoverOrganizations);
+router.get('/organizations/discover', apiLimiter, sessionAuth, discoverOrganizations);
 
 // Admin-only organization management (global)
 router.get(
   '/organizations-with-users',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   findAllWithUsers
 );
 
 router.get(
   '/organization/:organization/users',
-  [authJwt.verifyToken, authJwt.isUser, verifyOrgAccess.isOrgMember],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgMember,
   findOneWithUsers
 );
 
-router.get('/organization', [authJwt.verifyToken, authJwt.isUser], findAll);
+router.get('/organization', apiLimiter, authJwt.verifyToken, authJwt.isUser, findAll);
 
-router.get('/organization/:organization', sessionAuth, findOne);
+router.get('/organization/:organization', apiLimiter, sessionAuth, findOne);
 
 router.post(
   '/organization',
-  [authJwt.verifyToken, authJwt.isUser, allowNewOrganizations, validateBody('organization')],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  allowNewOrganizations,
+  validateBody('organization'),
   create
 );
 
 router.put(
   '/organization/:organization',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('organization', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('organization', { partial: true }),
   update
 );
 
 // Org owners may delete their own organization; global admins any.
 router.delete(
   '/organization/:organization',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgOwner,
-    verifyOrgAccess.rejectExternallyManagedOrg,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgOwner,
+  verifyOrgAccess.rejectExternallyManagedOrg,
   deleteOrg
 );
 
 router.put(
   '/organization/:organization/suspend',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   suspendOrganization
 );
 
 router.put(
   '/organization/:organization/resume',
-  [authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   resumeOrganization
 );
 
 // Organization-specific user management
 router.put(
   '/organization/:organization/access-mode',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('accessMode'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('accessMode'),
   updateAccessMode
 );
 
 router.put(
   '/organization/:organization/users/:userId/role',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgOwner,
-    verifyOrgAccess.rejectExternallyManagedOrg,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgOwner,
+  verifyOrgAccess.rejectExternallyManagedOrg,
   updateUserOrgRole
 );
 
 // Org-scoped membership removal (hierarchy check happens in the controller)
 router.delete(
   '/organization/:organization/members/:userId',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.rejectExternallyManagedOrg,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.rejectExternallyManagedOrg,
   removeUserFromOrg
 );
 
 // Global-admin self-join: a platform admin adds themselves to an org as admin
 router.post(
   '/organization/:organization/join',
-  [
-    authJwt.verifyToken,
-    authJwt.isUser,
-    authJwt.isAdmin,
-    verifyOrgAccess.rejectExternallyManagedOrg,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
+  verifyOrgAccess.rejectExternallyManagedOrg,
   joinAsAdmin
 );
 

@@ -29,25 +29,21 @@ router.get('/organization/:organization/box/:name/artwork', apiLimiter, sessionA
 // Administrative Actions - Now require organization membership
 router.post(
   '/organization/:organization/box',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgWriter,
-    validateBody('box'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgWriter,
+  validateBody('box'),
   create
 );
 
 router.put(
   '/organization/:organization/box/:name',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgWriter,
-    validateBody('box', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgWriter,
+  validateBody('box', { partial: true }),
   update
 );
 
@@ -55,42 +51,45 @@ router.put(
 // create/rename; auth matches the box update chain.
 router.post(
   '/organization/:organization/box/:name/artwork',
-  [
-    fileOperationLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgWriter,
-  ],
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgWriter,
   uploadArtwork
 );
 
 router.post(
   '/organization/:organization/box/:name/watch',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   watchBox
 );
 
 router.delete(
   '/organization/:organization/box/:name/watch',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   unwatchBox
 );
 
 router.delete(
   '/organization/:organization/box/:name',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount, verifyOrgAccess.isOrgWriter],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgWriter,
   deleteBox
 );
 
 router.post(
   '/organization/:organization/box/bulk',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgWriter,
-    validateBody('bulkItem'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgWriter,
+  validateBody('bulkItem'),
   bulkBoxes
 );
 

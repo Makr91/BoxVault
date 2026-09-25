@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { getStorageInfo } from '../controllers/system/storage.js';
 import { getUpdateStatus } from '../controllers/system/update.js';
 
@@ -13,8 +14,14 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/system/storage', [authJwt.verifyToken, authJwt.isAdmin], getStorageInfo);
+router.get('/system/storage', apiLimiter, authJwt.verifyToken, authJwt.isAdmin, getStorageInfo);
 
-router.get('/system/update-check', [authJwt.verifyToken, authJwt.isAdmin], getUpdateStatus);
+router.get(
+  '/system/update-check',
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isAdmin,
+  getUpdateStatus
+);
 
 export default router;

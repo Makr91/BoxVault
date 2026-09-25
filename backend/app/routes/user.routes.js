@@ -39,57 +39,71 @@ router.use((req, res, next) => {
 
 router.put(
   '/users/:userId/change-password',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    authJwt.isSelfOrAdmin,
-    validateBody('password'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isSelfOrAdmin,
+  validateBody('password'),
   changePassword
 );
 router.put(
   '/users/:userId/change-email',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin, validateBody('email')],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isSelfOrAdmin,
+  validateBody('email'),
   changeEmail
 );
 router.put(
   '/users/:userId/change-name',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    authJwt.isSelfOrAdmin,
-    validateBody('displayName'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isSelfOrAdmin,
+  validateBody('displayName'),
   changeName
 );
 router.put(
   '/users/:userId/suspend',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   suspendUser
 );
 router.put(
   '/users/:userId/resume',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   resumeUser
 );
 router.delete(
   '/users/:userId',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isSelfOrAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isSelfOrAdmin,
   deleteUserAuth
 );
-router.get('/user', [apiLimiter, authJwt.verifyToken, authJwt.isUser], getUserProfile);
+router.get('/user', apiLimiter, authJwt.verifyToken, authJwt.isUser, getUserProfile);
 router.patch(
   '/user',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, validateBody('profile', { partial: true })],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  validateBody('profile', { partial: true }),
   patchUser
 );
 
 // Multi-organization user management (service accounts get their single organization)
 router.get(
   '/user/organizations',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   getUserOrganizations
 );
 
@@ -97,74 +111,88 @@ router.get(
 // token has to be fresh before the controller reaches for it.
 router.patch(
   '/user/preferences',
-  [apiLimiter, oidcTokenRefresh, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  oidcTokenRefresh,
+  authJwt.verifyToken,
+  authJwt.isUser,
   updatePreferences
 );
 
-router.get('/user/watches', [apiLimiter, authJwt.verifyToken, authJwt.isUser], listUserWatches);
+router.get('/user/watches', apiLimiter, authJwt.verifyToken, authJwt.isUser, listUserWatches);
 
 router.get(
   '/user/iso-watches',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   listUserIsoWatches
 );
 
 router.get(
   '/user/download-watches',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   listUserDownloadWatches
 );
 
 router.post(
   '/user/leave/:orgName',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   leaveOrganization
 );
 
 router.put(
   '/user/primary-organization/:orgName',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   setPrimaryOrganization
 );
 
 router.get(
   '/organizations/:organization/only-user',
-  [apiLimiter, authJwt.verifyToken],
+  apiLimiter,
+  authJwt.verifyToken,
   authJwt.isUser,
   isOnlyUserInOrg
 );
 router.post(
   '/organization/:organization/users',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('register'),
-    verifySignUp.checkRolesExisted,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('register'),
+  verifySignUp.checkRolesExisted,
   signup
 );
 router.get(
   '/organization/:organization/users/:userName',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   findOne
 );
 router.put(
   '/organization/:organization/users/:userName',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
   update
 );
 // Org-scoped membership removal (hierarchy check happens in the controller)
 router.delete(
   '/organization/:organization/users/:username',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUser,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.rejectExternallyManagedOrg,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.rejectExternallyManagedOrg,
   deleteUser
 );
 

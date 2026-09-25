@@ -1,6 +1,7 @@
 // provider.routes.js
 import { Router } from 'express';
 import { authJwt, validateBody, verifyOrgAccess, sessionAuth } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { create } from '../controllers/provider/create.js';
 import { findAllByVersion } from '../controllers/provider/findallbyversion.js';
 import { findOne } from '../controllers/provider/findone.js';
@@ -21,61 +22,64 @@ router.use((req, res, next) => {
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    verifyOrgAccess.attachProvider,
-    validateBody('provider'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('provider'),
   create
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider',
+  apiLimiter,
   sessionAuth,
   findAllByVersion
 );
 
 router.get(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
+  apiLimiter,
   sessionAuth,
   findOne
 );
 
 router.put(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    verifyOrgAccess.attachProvider,
-    validateBody('provider', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('provider', { partial: true }),
   update
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/:providerName',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   deleteProvider
 );
 
 router.post(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider/bulk',
-  [
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.attachBox,
-    verifyOrgAccess.attachProvider,
-    validateBody('bulkLeaf'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.attachBox,
+  verifyOrgAccess.attachProvider,
+  validateBody('bulkLeaf'),
   bulkProviders
 );
 
 router.delete(
   '/organization/:organization/box/:boxId/version/:versionNumber/provider',
-  [authJwt.verifyToken, authJwt.isUserOrServiceAccount],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
   deleteAllByVersion
 );
 

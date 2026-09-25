@@ -12,10 +12,12 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/mail/test-smtp', [apiLimiter, authJwt.verifyToken, authJwt.isAdmin], testSmtp);
+router.post('/mail/test-smtp', apiLimiter, authJwt.verifyToken, authJwt.isAdmin, testSmtp);
 router.post(
   '/auth/resend-verification',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   resendVerificationMail
 );
 

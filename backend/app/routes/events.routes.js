@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authJwt } from '../middleware/index.js';
+import { apiLimiter } from '../middleware/rateLimiter.js';
 import { authorizationCredential } from '../utils/requestAuth.js';
 import { openEventStream } from '../utils/events.js';
 import { problem } from '../utils/problem.js';
@@ -56,6 +57,13 @@ const requireCredential = (req, res, next) => {
  *       403:
  *         description: The caller may not read the stream
  */
-router.get('/events', [requireCredential, authJwt.verifyToken, authJwt.isUser], openEventStream);
+router.get(
+  '/events',
+  apiLimiter,
+  requireCredential,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  openEventStream
+);
 
 export default router;

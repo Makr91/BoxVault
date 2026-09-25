@@ -49,136 +49,126 @@ router.get('/organization/:organization/iso/:name', apiLimiter, sessionAuth, fin
 
 router.post(
   '/organization/:organization/iso',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('iso'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('iso'),
   create
 );
 
 router.put(
   '/organization/:organization/iso/:name',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('iso', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('iso', { partial: true }),
   update
 );
 
 router.post(
   '/organization/:organization/iso/:name/watch',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   watchIso
 );
 
 router.delete(
   '/organization/:organization/iso/:name/watch',
-  [apiLimiter, authJwt.verifyToken, authJwt.isUser],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
   unwatchIso
 );
 
 router.delete(
   '/organization/:organization/iso/:name',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
   deleteIso
 );
 
 router.post(
   '/organization/:organization/iso/bulk',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    validateBody('bulkItem'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  validateBody('bulkItem'),
   bulkIsos
 );
 
 router.post(
   '/organization/:organization/iso/:name/version',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.attachIso,
-    validateBody('version'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.attachIso,
+  validateBody('version'),
   createVersion
 );
 
 router.put(
   '/organization/:organization/iso/:name/version/:versionNumber',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.attachIso,
-    validateBody('version', { partial: true }),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.attachIso,
+  validateBody('version', { partial: true }),
   updateVersion
 );
 
 router.get(
   '/organization/:organization/iso/:name/version',
-  [apiLimiter, sessionAuth, verifyOrgAccess.attachIso],
+  apiLimiter,
+  sessionAuth,
+  verifyOrgAccess.attachIso,
   findAllVersions
 );
 
 router.get(
   '/organization/:organization/iso/:name/version/:versionNumber',
-  [apiLimiter, sessionAuth, verifyOrgAccess.attachIso],
+  apiLimiter,
+  sessionAuth,
+  verifyOrgAccess.attachIso,
   findOneVersion
 );
 
 router.delete(
   '/organization/:organization/iso/:name/version/:versionNumber',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.attachIso,
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.attachIso,
   deleteVersion
 );
 
 router.post(
   '/organization/:organization/iso/:name/version/bulk',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.attachIso,
-    validateBody('bulkVersion'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.attachIso,
+  validateBody('bulkVersion'),
   bulkVersions
 );
 
 router.post(
   '/organization/:organization/iso/:name/version/:versionNumber/architecture/bulk',
-  [
-    apiLimiter,
-    authJwt.verifyToken,
-    authJwt.isUserOrServiceAccount,
-    verifyOrgAccess.isOrgAdminOrOwner,
-    verifyOrgAccess.attachIso,
-    validateBody('bulkLeaf'),
-  ],
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  verifyOrgAccess.isOrgAdminOrOwner,
+  verifyOrgAccess.attachIso,
+  validateBody('bulkLeaf'),
   bulkArchitectures
 );
 
