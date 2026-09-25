@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.99.1](https://github.com/Makr91/BoxVault/compare/v0.99.0...v0.99.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.44.0 ([cad734e](https://github.com/Makr91/BoxVault/commit/cad734ef76333008c90d466bec1827f1bdcde9e5))
+* bump startcloud-ui to v0.44.0 ([a7306ec](https://github.com/Makr91/BoxVault/commit/a7306ece25d7330100c3efdcff8a93e1823c0d8d))
+
 ## [0.99.0](https://github.com/Makr91/BoxVault/compare/v0.98.1...v0.99.0) (2026-09-25)
 
 
