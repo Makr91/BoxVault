@@ -293,18 +293,17 @@ const toScimUser = (req, user, externalId, primaryOrgUuid) => ({
 
 /**
  * Derive the extension primaryOrgUuid from the stored primary-organization
- * pointer: the mirrored org's UUID when the user's primary org belongs to the
- * requesting issuer, else null.
+ * pointer: the mirrored org's UUID when the user's primary org is a mirror,
+ * else null.
  * @param {Object} user - BoxVault user instance
- * @param {string} issuer - Verified issuer from scimAuth
  * @returns {Promise<string|null>}
  */
-const findPrimaryOrgUuid = async (user, issuer) => {
+const findPrimaryOrgUuid = async user => {
   if (!user.primary_organization_id) {
     return null;
   }
   const org = await Organization.findByPk(user.primary_organization_id);
-  return org && org.external_issuer === issuer ? org.external_org_id : null;
+  return org?.external_org_id || null;
 };
 
 /**
@@ -415,29 +414,25 @@ const buildUserPatch = (user, state) => {
  * Apply the pushed primaryOrgUuid pointer when that org is already mirrored
  * locally; extends the patch with the denormalized pointer as needed.
  * @param {Object} user - BoxVault user instance
- * @param {string} issuer - Verified issuer from scimAuth
  * @param {string} primaryOrgUuid - Auth-server org UUID
  * @param {Object} patch - Update patch to extend
  * @returns {Promise<void>}
  */
-const applyPrimaryOrgPointer = async (user, issuer, primaryOrgUuid, patch) => {
-  const primaryOrg = await Organization.findOne({
-    where: { external_issuer: issuer, external_org_id: primaryOrgUuid },
-  });
+const applyPrimaryOrgPointer = async (user, primaryOrgUuid, patch) => {
+  const primaryOrg = await Organization.findOne({ where: { external_org_id: primaryOrgUuid } });
   if (!primaryOrg) {
     // Org not mirrored yet: skip the pointer — the daily reconcile re-push
     // heals it once the org's groups have arrived.
     return;
   }
   if (user.primary_organization_id !== primaryOrg.id) {
-    // The pushed primary is authoritative only among this issuer's orgs: the
-    // overall pointer may be set only when unset or already on one of this
-    // issuer's orgs — never stolen from a locally-created org or another
-    // issuer's org.
+    // The pushed primary is authoritative only among mirrored orgs: the
+    // overall pointer may be set only when unset or already on a mirror —
+    // never stolen from a locally-created org.
     const currentPrimary = user.primary_organization_id
       ? await Organization.findByPk(user.primary_organization_id)
       : null;
-    if (!currentPrimary || currentPrimary.external_issuer === issuer) {
+    if (!currentPrimary || currentPrimary.external_org_id) {
       patch.primary_organization_id = primaryOrg.id;
     }
   }
@@ -451,14 +446,13 @@ const applyPrimaryOrgPointer = async (user, issuer, primaryOrgUuid, patch) => {
  * Apply the pushed full desired state to the stored user: field diff plus the
  * primaryOrgUuid pointer (when that org is already mirrored locally).
  * @param {Object} user - BoxVault user instance
- * @param {string} issuer - Verified issuer from scimAuth
  * @param {Object} state - Parsed desired state
  * @returns {Promise<void>}
  */
-const applyUserState = async (user, issuer, state) => {
+const applyUserState = async (user, state) => {
   const patch = buildUserPatch(user, state);
   if (state.primaryOrgUuid) {
-    await applyPrimaryOrgPointer(user, issuer, state.primaryOrgUuid, patch);
+    await applyPrimaryOrgPointer(user, state.primaryOrgUuid, patch);
   }
   if (Object.keys(patch).length) {
     await user.update(patch);
@@ -531,7 +525,7 @@ const createUser = async (req, res) => {
       );
     }
 
-    await applyUserState(user, req.scimIssuer, state);
+    await applyUserState(user, state);
 
     log.auth.info('SCIM: user created', { externalId, userId: user.id });
     res.location(resourceLocation(req, '/Users', user.id));
@@ -567,7 +561,7 @@ const findUsers = async (req, res) => {
     if (!user) {
       return scimListResponse(res, []);
     }
-    const primaryOrgUuid = await findPrimaryOrgUuid(user, req.scimIssuer);
+    const primaryOrgUuid = await findPrimaryOrgUuid(user);
     return scimListResponse(res, [toScimUser(req, user, credential.subject, primaryOrgUuid)]);
   } catch (err) {
     log.error.error('SCIM: user GET failed', { error: err.message });
@@ -658,7 +652,7 @@ const putUser = async (req, res) => {
       }
     }
 
-    await applyUserState(user, req.scimIssuer, state);
+    await applyUserState(user, state);
 
     log.auth.info('SCIM: user updated', { scimId: req.params.id, userId: user.id });
     return scimResponse(res, 200, toScimUser(req, user, credential.subject, state.primaryOrgUuid));

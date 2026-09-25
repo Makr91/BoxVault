@@ -180,7 +180,7 @@ const createGroup = async (req, res) => {
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
-    await recomputeOrgMemberships(db, org, req.scimIssuer, parsed.orgUuid, transaction);
+    await recomputeOrgMemberships(db, org, parsed.orgUuid, transaction);
 
     await transaction.commit();
 
@@ -285,7 +285,7 @@ const putGroup = async (req, res) => {
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
-    await recomputeOrgMemberships(db, org, req.scimIssuer, row.org_uuid, transaction);
+    await recomputeOrgMemberships(db, org, row.org_uuid, transaction);
 
     await transaction.commit();
 
@@ -307,10 +307,10 @@ const putGroup = async (req, res) => {
  * DELETE /scim/v2/Groups/:id — drop one stored role group, addressed by the
  * BoxVault-assigned id; 204 with no body on success (RFC 7644 §3.6). Unknown
  * ids are a plain 404 SCIM error (the auth server treats that as
- * already-absent success). While other role groups of the org remain,
- * memberships are recomputed from what is left; when the LAST role group of an
- * org_uuid is deleted, the mirrored org itself is deleted (existing
- * org-deletion semantics: row + storage directory).
+ * already-absent success). While other role groups of the org remain, under
+ * any issuer face, memberships are recomputed from what is left; when the LAST
+ * role group of an org_uuid is deleted, the mirrored org itself is deleted
+ * (existing org-deletion semantics: row + storage directory).
  */
 const deleteGroup = async (req, res) => {
   const groupId = parseResourceId(req.params.id);
@@ -329,21 +329,15 @@ const deleteGroup = async (req, res) => {
     const { org_uuid: orgUuid, role } = row;
     await row.destroy({ transaction });
 
-    const remaining = await ScimGroup.count({
-      where: { issuer: req.scimIssuer, org_uuid: orgUuid },
-      transaction,
-    });
-    const org = await Organization.findOne({
-      where: { external_issuer: req.scimIssuer, external_org_id: orgUuid },
-      transaction,
-    });
+    const remaining = await ScimGroup.count({ where: { org_uuid: orgUuid }, transaction });
+    const org = await Organization.findOne({ where: { external_org_id: orgUuid }, transaction });
 
     let postCommitCleanup = null;
     if (org) {
       if (remaining === 0) {
         postCommitCleanup = await destroyMirrorOrg(org, transaction);
       } else {
-        await recomputeOrgMemberships(db, org, req.scimIssuer, orgUuid, transaction);
+        await recomputeOrgMemberships(db, org, orgUuid, transaction);
       }
     }
 

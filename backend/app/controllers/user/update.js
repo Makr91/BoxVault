@@ -10,7 +10,7 @@ const { user: User } = db;
  * /api/organization/{organizationName}/users/{userName}:
  *   put:
  *     summary: Update a user in an organization
- *     description: Update user information within an organization (Admin only)
+ *     description: Change a user's email address (Admin only). Global roles are written through PUT /api/users/{userId}/roles.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -34,25 +34,10 @@ const { user: User } = db;
  *           schema:
  *             type: object
  *             properties:
- *               username:
- *                 type: string
- *                 description: New username
  *               email:
  *                 type: string
  *                 format: email
  *                 description: New email address
- *               password:
- *                 type: string
- *                 format: password
- *                 description: New password
- *               roles:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: User roles
- *               organization:
- *                 type: string
- *                 description: New organization name
  *     responses:
  *       200:
  *         description: User updated successfully

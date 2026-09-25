@@ -2,6 +2,7 @@ import db from '../app/models/index.js';
 import externalUserHandler from '../app/auth/external-user-handler.js';
 
 const ISSUER = 'https://claims-idp.example';
+const OTHER_FACE = 'https://claims-idp-face.example';
 const PROVIDER = 'oidc-claimsidp';
 
 const authConfig = {
@@ -22,8 +23,7 @@ describe('External user handling from identity-provider claims', () => {
   let localOrg;
   let user;
 
-  const orgByUuid = uuid =>
-    db.organization.findOne({ where: { external_issuer: ISSUER, external_org_id: uuid } });
+  const orgByUuid = uuid => db.organization.findOne({ where: { external_org_id: uuid } });
 
   const membershipOf = async (account, uuid) => {
     const org = await orgByUuid(uuid);
@@ -159,6 +159,24 @@ describe('External user handling from identity-provider claims', () => {
       const mirrored = await orgByUuid(reservedUuid);
       expect(mirrored.name).toBe(`Admin-${reservedUuid.slice(0, 6)}`);
       expect(mirrored.display_name).toBe('Admin');
+    });
+
+    it('should sweep memberships of every mirror when the claim arrives through another face', async () => {
+      await sync(user, [{ uuid: gammaUuid, name: 'Gamma Org', roles: ['admin'] }], OTHER_FACE);
+      expect(await membershipOf(user, reservedUuid)).toBeNull();
+      expect((await membershipOf(user, gammaUuid)).role).toBe('admin');
+      expect(await db.organization.count({ where: { external_org_id: gammaUuid } })).toBe(1);
+      expect((await orgByUuid(gammaUuid)).external_issuer).toBe(ISSUER);
+    });
+
+    it('should reuse the mirror an earlier face minted instead of minting a second one', async () => {
+      await sync(user, [{ uuid: reservedUuid, name: 'Admin' }], OTHER_FACE);
+      expect(await db.organization.count({ where: { external_org_id: reservedUuid } })).toBe(1);
+      const mirrored = await orgByUuid(reservedUuid);
+      expect(mirrored.external_issuer).toBe(ISSUER);
+      expect(mirrored.name).toBe(`Admin-${reservedUuid.slice(0, 6)}`);
+      expect((await membershipOf(user, reservedUuid)).role).toBe('member');
+      expect(await membershipOf(user, gammaUuid)).toBeNull();
     });
 
     it('should roll back and rethrow when a claimed organization cannot be mirrored', async () => {

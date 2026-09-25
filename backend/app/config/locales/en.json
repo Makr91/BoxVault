@@ -273,6 +273,11 @@
     "updated": "User updated successfully!",
     "emailChanged": "Email changed successfully!",
     "nameChanged": "Display name changed successfully!",
+    "rolesUpdated": "Global roles updated successfully!",
+    "lastAdmin": "This account is the last administrator. Make another account an administrator first.",
+    "roles": {
+      "error": "Some error occurred while updating the user's roles."
+    },
     "preferenceInvalid": "The value supplied for {{invalidField}} is not valid.",
     "preferencesRequireIdpSession": "Sign in through your identity provider to change these preferences.",
     "preferencesDelegationFailed": "Your identity provider could not be reached. Please try again.",

@@ -123,11 +123,14 @@ const customerIdIsFree = async (Organization, customerId, selfOrgId, opts) => {
 
 /**
  * Upsert the BoxVault org row that mirrors one auth-server org, keyed on
- * (external_issuer, external_org_id). Slug is frozen at creation; display_name
- * refreshes to the mutable upstream name; org_code is the customer ID when
- * present (reconciled if it drifted), else a sequential local code.
+ * external_org_id alone: one issuer answering under several hostnames is
+ * still one issuer, so the mirror is reused whichever face the org arrives
+ * through and external_issuer records the face that first minted it. Slug is
+ * frozen at creation; display_name refreshes to the mutable upstream name;
+ * org_code is the customer ID when present (reconciled if it drifted), else
+ * a sequential local code.
  * @param {Object} db - Database models
- * @param {string} issuer - OIDC issuer
+ * @param {string} issuer - OIDC issuer the org arrived through
  * @param {Object} source - { uuid, name, customerId, logo, description }
  * @param {Object|null} transaction
  * @returns {Promise<Object>} Organization instance
@@ -143,7 +146,7 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
       : null;
 
   const org = await Organization.findOne({
-    where: { external_issuer: issuer, external_org_id: source.uuid },
+    where: { external_org_id: source.uuid },
     ...opts,
   });
 

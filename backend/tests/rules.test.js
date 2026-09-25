@@ -5,6 +5,7 @@ const FORMS = [
   'login',
   'register',
   'displayName',
+  'roles',
   'profile',
   'password',
   'email',
@@ -130,6 +131,16 @@ describe('GET /api/rules', () => {
       'owner',
       'superadmin',
     ]);
+  });
+
+  it('should enumerate the global roles', () => {
+    expect(document.forms.roles.required).toEqual(['roles']);
+    expect(document.forms.roles.properties.roles).toEqual({
+      type: 'array',
+      minItems: 1,
+      uniqueItems: true,
+      items: { type: 'string', enum: ['user', 'admin'] },
+    });
   });
 
   it('should enumerate the access modes', () => {

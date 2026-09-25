@@ -23,6 +23,7 @@ import { update } from '../controllers/user/update.js';
 import { delete as deleteUser } from '../controllers/user/delete.js';
 import { suspendUser } from '../controllers/auth/user/suspend.js';
 import { resumeUser } from '../controllers/auth/user/resume.js';
+import { listRoles, getUserRoles, setUserRoles } from '../controllers/auth/user/roles.js';
 import { deleteUser as deleteUserAuth } from '../controllers/auth/user/delete.js';
 import { signup } from '../controllers/auth/signup.js';
 import { listUserWatches } from '../controllers/box/watch.js';
@@ -79,6 +80,24 @@ router.put(
   authJwt.isUser,
   authJwt.isAdmin,
   resumeUser
+);
+router.get('/roles', apiLimiter, authJwt.verifyToken, authJwt.isUser, authJwt.isAdmin, listRoles);
+router.get(
+  '/users/:userId/roles',
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
+  getUserRoles
+);
+router.put(
+  '/users/:userId/roles',
+  apiLimiter,
+  authJwt.verifyToken,
+  authJwt.isUser,
+  authJwt.isAdmin,
+  validateBody('roles'),
+  setUserRoles
 );
 router.delete(
   '/users/:userId',

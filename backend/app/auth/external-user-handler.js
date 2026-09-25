@@ -52,9 +52,10 @@ const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
 
 /**
  * Sync a user's org memberships from the organizations claim (auth-server is the
- * source of truth). Exact mirror: adds/updates memberships in this issuer's orgs
- * and REMOVES memberships in this issuer's orgs that are no longer in the claim.
- * Never touches locally-created orgs or orgs from a different issuer.
+ * source of truth). Exact mirror: adds/updates memberships in the claimed orgs
+ * and REMOVES memberships in every externally mirrored org that is no longer in
+ * the claim, whichever issuer face minted the mirror. Never touches
+ * locally-created orgs.
  * @param {Object} user - User instance
  * @param {Object} profile - Token/userinfo claims (must carry `organizations`)
  * @param {string|null} issuer - The provider issuer (iss)
@@ -121,14 +122,14 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
       }
     }
 
-    // Exact mirror: drop memberships in THIS issuer's external orgs not in the claim.
+    // Exact mirror: drop memberships in every external org not in the claim.
     const externalOrgs = await Organization.findAll({
-      where: { external_issuer: issuer },
+      where: { external_org_id: { [db.Sequelize.Op.ne]: null } },
       attributes: ['id'],
       transaction,
     });
-    const issuerOrgIds = externalOrgs.map(o => o.id);
-    const staleOrgIds = issuerOrgIds.filter(id => !seenOrgIds.includes(id));
+    const externalOrgIds = externalOrgs.map(o => o.id);
+    const staleOrgIds = externalOrgIds.filter(id => !seenOrgIds.includes(id));
 
     if (staleOrgIds.length) {
       await UserOrg.destroy({
@@ -148,11 +149,10 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
     }
 
     // Denormalized primary pointer. The claim's primary flag is authoritative
-    // only among this issuer's orgs: the pointer may be set only when unset or
-    // already on one of this issuer's orgs — never stolen from a
-    // locally-created org or another issuer's org.
+    // only among external orgs: the pointer may be set only when unset or
+    // already on a mirrored org — never stolen from a locally-created org.
     const pointerReassignable =
-      !user.primary_organization_id || issuerOrgIds.includes(user.primary_organization_id);
+      !user.primary_organization_id || externalOrgIds.includes(user.primary_organization_id);
     if (primaryOrgId && pointerReassignable && user.primary_organization_id !== primaryOrgId) {
       await user.update({ primary_organization_id: primaryOrgId }, { transaction });
     }

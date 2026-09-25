@@ -273,6 +273,11 @@
     "updated": "¡Usuario actualizado exitosamente!",
     "emailChanged": "¡Correo electrónico cambiado exitosamente!",
     "nameChanged": "¡Nombre visible cambiado exitosamente!",
+    "rolesUpdated": "¡Roles globales actualizados exitosamente!",
+    "lastAdmin": "Esta cuenta es la última administradora. Convierte otra cuenta en administradora primero.",
+    "roles": {
+      "error": "Ocurrió un error al actualizar los roles del usuario."
+    },
     "preferenceInvalid": "El valor proporcionado para {{invalidField}} no es válido.",
     "preferencesRequireIdpSession": "Inicia sesión con tu proveedor de identidad para cambiar estas preferencias.",
     "preferencesDelegationFailed": "No se pudo contactar con tu proveedor de identidad. Inténtalo de nuevo.",

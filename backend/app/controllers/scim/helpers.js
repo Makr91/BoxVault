@@ -199,29 +199,29 @@ const applyOrgProfile = async (org, profile, transaction) => {
 
 /**
  * Recompute a mirrored org's memberships from ALL stored role groups of its
- * org_uuid. Per user: highest role across groups wins (owner>admin>member>guest).
- * Users absent from every group lose their membership. Member UUIDs that
- * match no known BoxVault user are ignored (ghost members, per contract).
+ * org_uuid, whichever issuer face pushed them. Per user: highest role across
+ * groups wins (owner>admin>member>guest). Users absent from every group lose
+ * their membership. Member UUIDs that match no known BoxVault user are ignored
+ * (ghost members, per contract).
  * @param {Object} db - Database models
  * @param {Object} org - Mirrored organization instance
- * @param {string} issuer - OIDC issuer
  * @param {string} orgUuid - Auth-server org UUID
  * @param {Object} transaction - Active transaction
  * @returns {Promise<void>}
  */
-const recomputeOrgMemberships = async (db, org, issuer, orgUuid, transaction) => {
+const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
   const { scimGroup: ScimGroup, credential: Credential, user: User, UserOrg } = db;
 
-  const groups = await ScimGroup.findByOrg(issuer, orgUuid, transaction);
+  const groups = await ScimGroup.findByOrg(orgUuid, transaction);
 
-  // uuid -> winning auth-server role
+  // uuid -> winning auth-server role, with the issuer face that pushed it
   const winningRoles = new Map();
   for (const group of groups) {
     const members = Array.isArray(group.members) ? group.members : [];
     for (const memberUuid of members) {
       const current = winningRoles.get(memberUuid);
-      if (!current || GROUP_ROLE_PRECEDENCE[group.role] > GROUP_ROLE_PRECEDENCE[current]) {
-        winningRoles.set(memberUuid, group.role);
+      if (!current || GROUP_ROLE_PRECEDENCE[group.role] > GROUP_ROLE_PRECEDENCE[current.role]) {
+        winningRoles.set(memberUuid, { role: group.role, issuer: group.issuer });
       }
     }
   }
@@ -230,13 +230,17 @@ const recomputeOrgMemberships = async (db, org, issuer, orgUuid, transaction) =>
   // Credentials are issuer-scoped (#30); findByIssuerAndSubject also claims
   // pre-issuer rows stored under the flat 'oidc' value.
   const desired = new Map(); // user_id -> BoxVault org role
-  for (const [memberUuid, groupRole] of winningRoles) {
+  for (const [memberUuid, winner] of winningRoles) {
     // eslint-disable-next-line no-await-in-loop -- memberships resolved sequentially in one txn
-    const credential = await Credential.findByIssuerAndSubject(issuer, memberUuid, transaction);
+    const credential = await Credential.findByIssuerAndSubject(
+      winner.issuer,
+      memberUuid,
+      transaction
+    );
     if (!credential) {
       continue;
     }
-    desired.set(credential.user_id, groupRole);
+    desired.set(credential.user_id, winner.role);
   }
 
   const existing = await UserOrg.findAll({

@@ -12,6 +12,7 @@ const FORMS = [
   'login',
   'register',
   'displayName',
+  'roles',
   'profile',
   'password',
   'email',
