@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.98.0](https://github.com/Makr91/BoxVault/compare/v0.97.0...v0.98.0) (2026-09-25)
+
+
+### Features
+
+* a file may be a link to a release published elsewhere ([3c600b9](https://github.com/Makr91/BoxVault/commit/3c600b9ce9c3d63a0d6c77e52f7adfb79313ad6c))
+
 ## [0.97.0](https://github.com/Makr91/BoxVault/compare/v0.96.2...v0.97.0) (2026-09-25)
 
 
