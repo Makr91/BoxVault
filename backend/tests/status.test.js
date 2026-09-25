@@ -88,8 +88,10 @@ describe('GET /api/status per Host', () => {
     expect(res.body.sorts).toEqual({
       downloads: { providers: [{ column: 'name', direction: 'desc' }] },
     });
+    expect(res.body.groups).toEqual({ downloads: { items: 'family' } });
     expect(plain.body).not.toHaveProperty('organization');
     expect(plain.body).not.toHaveProperty('sorts');
+    expect(plain.body).not.toHaveProperty('groups');
   });
 
   it('should answer exactly the listed features on a hostname that declares them', async () => {
@@ -101,6 +103,7 @@ describe('GET /api/status per Host', () => {
     expect(res.body.links.community).toEqual(DEFAULT_COMMUNITY);
     expect(res.body).not.toHaveProperty('organization');
     expect(res.body).not.toHaveProperty('sorts');
+    expect(res.body).not.toHaveProperty('groups');
 
     const plain = await request(app).get('/api/status');
     expect(plain.body.features).toEqual(DEFAULT_FEATURES);

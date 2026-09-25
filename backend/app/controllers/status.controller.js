@@ -88,13 +88,14 @@ const packsOf = site =>
     .map(name => ({ name, css: `/themes/${name}/${name}.css`, label: name }));
 
 /**
- * The brand, collections, links, organization and sorts of one hostname: the
- * sites map entry over the defaults, the defaults alone for the unnamed
- * hostname; a site's links.community replaces the default list whole;
+ * The brand, collections, links, organization, sorts and groups of one
+ * hostname: the sites map entry over the defaults, the defaults alone for the
+ * unnamed hostname; a site's links.community replaces the default list whole;
  * organization is present only while the entry names the one organization
- * the face serves, sorts only while the entry carries a table order
+ * the face serves, sorts only while the entry carries a table order, groups
+ * only while it carries a grouping
  * @param {Object|null} site - The sites map entry
- * @returns {{brand: Object, collections: string[], links: Object, organization?: string, sorts?: Object}} The per-host members
+ * @returns {{brand: Object, collections: string[], links: Object, organization?: string, sorts?: Object, groups?: Object}} The per-host members
  */
 const faceOf = site => {
   if (!site) {
@@ -106,6 +107,7 @@ const faceOf = site => {
   return {
     ...(site.organization ? { organization: site.organization } : {}),
     ...(site.sorts && Object.keys(site.sorts).length > 0 ? { sorts: site.sorts } : {}),
+    ...(site.groups && Object.keys(site.groups).length > 0 ? { groups: site.groups } : {}),
     brand: {
       ...STATUS.brand,
       name: site.brand?.name || STATUS.brand.name,
@@ -144,7 +146,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its packs list included), collections, links (its community list included), features, organization and sorts are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and neither organization nor sorts.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its packs list included), collections, links (its community list included), features, organization, sorts and groups are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and none of organization, sorts or groups.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -259,6 +261,15 @@ const featuresOf = (site, localEnabled) => {
  *                             type: string
  *                             enum: [asc, desc]
  *                   example: { downloads: { providers: [{ column: name, direction: desc }] } }
+ *                 groups:
+ *                   type: object
+ *                   description: The field each level of this hostname groups its rows by, present only while its sites entry carries one; a map of collection key (boxes, isos, downloads) to level (items, versions, providers, architectures) to family or vendor, the UI drawing that level's rows under one sub-header per value, beneath the organization groups on a host of many organizations and alone on a host whose status names its one organization
+ *                   additionalProperties:
+ *                     type: object
+ *                     additionalProperties:
+ *                       type: string
+ *                       enum: [family, vendor]
+ *                   example: { downloads: { items: family } }
  *                 collections:
  *                   type: array
  *                   description: Collection registry entries to mount, in order; the first is implicit (no route segment)

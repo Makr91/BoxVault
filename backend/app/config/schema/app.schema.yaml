@@ -695,6 +695,22 @@ properties:
                       - desc
                     title: Direction
                     order: 2
+        groups:
+          type: object
+          title: Grouping
+          description: The field each level of this hostname groups its rows by, per collection and level, answered in the status payload as groups; absent groups nothing below the organization
+          order: 7
+          additionalProperties:
+            type: object
+            title: Collection
+            description: One of boxes, isos or downloads; each member names a level of that collection's pages
+            additionalProperties:
+              type: string
+              enum:
+                - family
+                - vendor
+              title: Field
+              description: One of items, versions, providers or architectures, set to the field its rows are grouped by
         features:
           type: array
           items:

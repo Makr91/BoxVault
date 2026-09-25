@@ -71,6 +71,7 @@ const appConfig = {
       },
       collections: ['downloads'],
       sorts: { downloads: { providers: [{ column: 'name', direction: 'desc' }] } },
+      groups: { downloads: { items: 'family' } },
       links: {
         docs: 'https://docs.test',
         contact: 'help@test',
