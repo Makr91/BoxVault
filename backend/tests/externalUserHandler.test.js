@@ -201,7 +201,7 @@ describe('External user handling from identity-provider claims', () => {
       email_verified: true,
       name: 'Fresh Person',
       picture: 'https://cdn.example/fresh.png',
-      preferences: { language: 'es', theme: 'dark' },
+      preferences: { language: 'es', theme: 'dark', pack: 'lcars', motion: 'reduce' },
       zoneinfo: 'Europe/Berlin',
       organizations: [
         { uuid: `fresh-org-${uniqueId}`, name: 'Fresh Org', roles: ['admin'], primary: true },
@@ -220,6 +220,8 @@ describe('External user handling from identity-provider claims', () => {
       expect(created.avatar_url).toBe('https://cdn.example/fresh.png');
       expect(created.preferredLanguage).toBe('es');
       expect(created.preferredTheme).toBe('dark');
+      expect(created.preferredPack).toBe('lcars');
+      expect(created.preferredMotion).toBe('reduce');
       expect(created.timezone).toBe('Europe/Berlin');
       expect(created.authProvider).toBe('oidc');
       const fresh = await membershipOf(created, `fresh-org-${uniqueId}`);
@@ -236,7 +238,7 @@ describe('External user handling from identity-provider claims', () => {
           ...baseProfile,
           name: 'Fresher Person',
           picture: 'https://cdn.example/fresher.png',
-          preferences: { language: 'en', theme: 'light' },
+          preferences: { language: 'en', theme: 'light', pack: 'prominic', motion: 'auto' },
           zoneinfo: 'America/Chicago',
         },
         db,
@@ -246,6 +248,8 @@ describe('External user handling from identity-provider claims', () => {
       expect(returning.avatar_url).toBe('https://cdn.example/fresher.png');
       expect(returning.preferredLanguage).toBe('en');
       expect(returning.preferredTheme).toBe('light');
+      expect(returning.preferredPack).toBe('prominic');
+      expect(returning.preferredMotion).toBe('auto');
       expect(returning.timezone).toBe('America/Chicago');
     });
 
@@ -257,6 +261,17 @@ describe('External user handling from identity-provider claims', () => {
         authConfig
       );
       expect(returning.avatar_url).toBe('https://cdn.example/fresher.png');
+    });
+
+    it('should keep the stored pack and motion when the claims carry malformed ones', async () => {
+      const returning = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        { ...baseProfile, preferences: { pack: 'Not A Pack', motion: 'none' } },
+        db,
+        authConfig
+      );
+      expect(returning.preferredPack).toBe('lcars');
+      expect(returning.preferredMotion).toBe('reduce');
     });
 
     it('should provision a guest from the organizations claim', async () => {

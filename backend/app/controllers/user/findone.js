@@ -18,6 +18,7 @@ const USER_ATTRIBUTES = [
   'locale',
   'preferredTheme',
   'preferredPack',
+  'preferredMotion',
   'timezone',
   'authProvider',
   'avatar_url',

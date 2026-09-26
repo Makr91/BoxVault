@@ -126,7 +126,13 @@ describe('Organization administration guards', () => {
     it('should answer the stored preferences for an empty patch', async () => {
       const res = await patch(signFor(memberA), {});
       expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual({ language: null, theme: null, pack: null, timezone: null });
+      expect(res.body).toEqual({
+        language: null,
+        theme: null,
+        pack: null,
+        motion: null,
+        timezone: null,
+      });
     });
 
     it('should reject an invalid language, theme or timezone', async () => {
@@ -144,7 +150,13 @@ describe('Organization administration guards', () => {
         timezone: 'UTC',
       });
       expect(res.statusCode).toBe(200);
-      expect(res.body).toEqual({ language: 'en-US', theme: 'dark', pack: null, timezone: 'UTC' });
+      expect(res.body).toEqual({
+        language: 'en-US',
+        theme: 'dark',
+        pack: null,
+        motion: null,
+        timezone: 'UTC',
+      });
     });
 
     it('should require an identity-provider session for a federated account', async () => {

@@ -465,6 +465,38 @@ describe('SCIM Users receiver', () => {
       expect(storedUser.update).toHaveBeenCalledWith({ verified: false });
     });
 
+    it('should leave the look preferences alone when the extension carries no preferences object', async () => {
+      Object.assign(storedUser, { preferredTheme: 'dark', preferredPack: 'lcars' });
+      const res = buildResponse();
+
+      await putUser(buildRequest(matchingBody({ [USER_EXTENSION]: { emailVerified: true } })), res);
+
+      expect(storedUser.update).not.toHaveBeenCalled();
+    });
+
+    it('should apply the preferences object as full desired state', async () => {
+      Object.assign(storedUser, { preferredTheme: 'dark', preferredPack: 'lcars' });
+      const res = buildResponse();
+      const body = matchingBody({
+        [USER_EXTENSION]: { preferences: { theme: 'light', motion: 'reduce', pack: 'Bad Pack' } },
+      });
+
+      await putUser(buildRequest(body), res);
+
+      expect(storedUser.update).toHaveBeenCalledWith({
+        preferredTheme: 'light',
+        preferredPack: null,
+        preferredMotion: 'reduce',
+      });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [USER_EXTENSION]: expect.objectContaining({
+            preferences: { theme: 'light', pack: null, motion: 'reduce' },
+          }),
+        })
+      );
+    });
+
     it('should store an http avatar pushed on photos', async () => {
       const res = buildResponse();
       const body = matchingBody({
@@ -679,7 +711,10 @@ describe('SCIM Users receiver', () => {
             locale: 'es-MX',
             timezone: 'Europe/Madrid',
             active: true,
-            [USER_EXTENSION]: { emailVerified: true },
+            [USER_EXTENSION]: {
+              emailVerified: true,
+              preferences: { theme: 'dark', pack: 'lcars', motion: 'reduce' },
+            },
           },
           {}
         ),
@@ -694,6 +729,9 @@ describe('SCIM Users receiver', () => {
           preferredLanguage: 'es-MX',
           locale: 'es-MX',
           timezone: 'Europe/Madrid',
+          preferredTheme: 'dark',
+          preferredPack: 'lcars',
+          preferredMotion: 'reduce',
           suspended: false,
           verified: true,
           authProvider: 'oidc',

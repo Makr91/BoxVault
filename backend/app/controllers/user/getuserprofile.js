@@ -42,6 +42,22 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 email_hash:
  *                   type: string
  *                   description: Hashed email for Gravatar
+ *                 preferred_language:
+ *                   type: string
+ *                   nullable: true
+ *                 preferred_theme:
+ *                   type: string
+ *                   nullable: true
+ *                   enum: [light, dark, auto]
+ *                 preferred_pack:
+ *                   type: string
+ *                   nullable: true
+ *                   description: The bare pack name the person chose, copied from the identity provider's preferences.pack at sign-in for a federated account
+ *                 preferred_motion:
+ *                   type: string
+ *                   nullable: true
+ *                   enum: [auto, reduce]
+ *                   description: The person's reduced-motion switch, copied from the identity provider's preferences.motion at sign-in for a federated account
  *                 roles:
  *                   type: array
  *                   items:
@@ -170,6 +186,7 @@ export const getUserProfile = async (req, res) => {
       preferred_language: user.preferredLanguage || null,
       preferred_theme: user.preferredTheme || null,
       preferred_pack: user.preferredPack || null,
+      preferred_motion: user.preferredMotion || null,
       email: user.email,
       verified: user.verified,
       email_hash: user.emailHash,

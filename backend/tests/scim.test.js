@@ -309,7 +309,11 @@ describe('SCIM receiver', () => {
       expect(res.body.userName).toBe(`scim.user.${uniqueId}`);
       expect(res.body.displayName).toBe('Scim User');
       expect(res.body.active).toBe(true);
-      expect(res.body[USER_EXTENSION]).toEqual({ emailVerified: true, primaryOrgUuid: null });
+      expect(res.body[USER_EXTENSION]).toEqual({
+        emailVerified: true,
+        primaryOrgUuid: null,
+        preferences: { theme: null, pack: null, motion: null },
+      });
       expect(res.body.meta.resourceType).toBe('User');
       expect(res.body.meta.location).toMatch(/\/scim\/v2\/Users\/\d+$/);
       expect(res.headers.location).toBe(res.body.meta.location);

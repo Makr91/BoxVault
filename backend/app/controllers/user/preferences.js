@@ -1,4 +1,4 @@
-// preferences.js — language / theme / timezone for the signed-in user.
+// preferences.js — language / theme / pack / motion / timezone for the signed-in user.
 //
 // Federated accounts: the identity provider owns these, so a write is
 // delegated to its PATCH /api/user/preferences on the acting user's own token
@@ -19,6 +19,7 @@ const badRequest = (req, res, title) =>
   problem(res, req, { status: 400, type: 'bad-request', title });
 
 const THEMES = ['light', 'dark', 'auto'];
+const MOTIONS = ['auto', 'reduce'];
 // RFC 5646 shape check only — the provider validates the tag itself.
 const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})*$/;
 // The provider's contract caps a language tag at 10 characters. Matching it
@@ -90,7 +91,7 @@ const isKnownTimezone = value => {
  * @returns {string|null} Invalid field name, or null when acceptable
  */
 const findInvalidField = body => {
-  const { language, theme, timezone } = body;
+  const { language, theme, motion, timezone } = body;
 
   if (typeof language !== 'undefined' && !isClearing(language)) {
     if (
@@ -103,6 +104,9 @@ const findInvalidField = body => {
   }
   if (typeof theme !== 'undefined' && !isClearing(theme) && !THEMES.includes(theme)) {
     return 'theme';
+  }
+  if (typeof motion !== 'undefined' && !isClearing(motion) && !MOTIONS.includes(motion)) {
+    return 'motion';
   }
   if (typeof timezone !== 'undefined' && !isClearing(timezone)) {
     if (typeof timezone !== 'string' || !isKnownTimezone(timezone)) {
@@ -124,6 +128,7 @@ const buildPatch = body => {
     language: 'preferredLanguage',
     theme: 'preferredTheme',
     pack: 'preferredPack',
+    motion: 'preferredMotion',
     timezone: 'timezone',
   };
 
@@ -139,6 +144,7 @@ const toWireShape = user => ({
   language: user.preferredLanguage || null,
   theme: user.preferredTheme || null,
   pack: user.preferredPack || null,
+  motion: user.preferredMotion || null,
   timezone: user.timezone || null,
 });
 
@@ -162,7 +168,7 @@ const delegateToProvider = async (req, body) => {
  * /api/user/preferences:
  *   patch:
  *     summary: Update the signed-in user's preferences
- *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. pack is a bare pack name setting the person's look. A hostname whose sites entry has no brand.packs key offers every pack of the UI build, so any bare name is accepted there and another shape is refused 422 pattern at /pack; a hostname with the key accepts exactly the listed names and refuses any other 422 enum at /pack, every name when the list is empty. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
+ *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. motion is the person's reduced-motion switch, auto following the device and reduce turning every animation off, refused 400 like an invalid theme otherwise. pack is a bare pack name setting the person's look. A hostname whose sites entry has no brand.packs key offers every pack of the UI build, so any bare name is accepted there and another shape is refused 422 pattern at /pack; a hostname with the key accepts exactly the listed names and refuses any other 422 enum at /pack, every name when the list is empty. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -184,6 +190,11 @@ const delegateToProvider = async (req, body) => {
  *                 type: string
  *                 nullable: true
  *                 description: A bare pack name, any pack of the build on a hostname without brand.packs and one of the listed names on a hostname with it; null follows the hostname's own pack
+ *               motion:
+ *                 type: string
+ *                 nullable: true
+ *                 enum: [auto, reduce]
+ *                 description: The reduced-motion switch that follows the person; null follows the device
  *               timezone:
  *                 type: string
  *                 nullable: true
@@ -202,6 +213,9 @@ const delegateToProvider = async (req, body) => {
  *                   type: string
  *                   nullable: true
  *                 pack:
+ *                   type: string
+ *                   nullable: true
+ *                 motion:
  *                   type: string
  *                   nullable: true
  *                 timezone:

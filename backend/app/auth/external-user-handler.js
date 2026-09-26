@@ -501,6 +501,22 @@ const resolvePreferredTheme = profile => {
   return THEME_PREFERENCES.includes(candidate) ? candidate : null;
 };
 
+// A bare pack name the identity provider carries as preferences.pack; the
+// host decides at render time whether it offers that pack.
+const PACK_PATTERN = /^[a-z0-9-]+$/;
+
+const resolvePreferredPack = profile => {
+  const candidate = profile.preferences?.pack;
+  return typeof candidate === 'string' && PACK_PATTERN.test(candidate) ? candidate : null;
+};
+
+const MOTION_PREFERENCES = ['auto', 'reduce'];
+
+const resolvePreferredMotion = profile => {
+  const candidate = profile.preferences?.motion;
+  return MOTION_PREFERENCES.includes(candidate) ? candidate : null;
+};
+
 /**
  * Create new external user
  * @param {string} provider - Auth provider
@@ -537,6 +553,8 @@ const createNewExternalUser = async (
     name: resolveDisplayName(profile),
     preferredLanguage: resolvePreferredLanguage(profile),
     preferredTheme: resolvePreferredTheme(profile),
+    preferredPack: resolvePreferredPack(profile),
+    preferredMotion: resolvePreferredMotion(profile),
     timezone: resolveTimezone(profile),
     email,
     password: null,
@@ -699,6 +717,16 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
     const preferredTheme = resolvePreferredTheme(profile);
     if (preferredTheme && user.preferredTheme !== preferredTheme) {
       await user.update({ preferredTheme });
+    }
+
+    const preferredPack = resolvePreferredPack(profile);
+    if (preferredPack && user.preferredPack !== preferredPack) {
+      await user.update({ preferredPack });
+    }
+
+    const preferredMotion = resolvePreferredMotion(profile);
+    if (preferredMotion && user.preferredMotion !== preferredMotion) {
+      await user.update({ preferredMotion });
     }
 
     const timezone = resolveTimezone(profile);

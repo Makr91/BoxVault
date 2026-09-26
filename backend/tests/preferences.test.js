@@ -250,6 +250,7 @@ describe('User Preferences', () => {
         language: 'en',
         theme: 'dark',
         pack: null,
+        motion: null,
         timezone: 'America/Chicago',
       });
     });
@@ -267,6 +268,7 @@ describe('User Preferences', () => {
         language: null,
         theme: 'light',
         pack: null,
+        motion: null,
         timezone: 'America/Chicago',
       });
     });
@@ -284,6 +286,7 @@ describe('User Preferences', () => {
         language: 'en',
         theme: 'light',
         pack: null,
+        motion: null,
         timezone: null,
       });
     });
@@ -334,6 +337,7 @@ describe('User Preferences', () => {
         language: 'en',
         theme: 'light',
         pack: null,
+        motion: null,
         timezone: 'America/Chicago',
       });
     });
@@ -349,6 +353,65 @@ describe('User Preferences', () => {
 
       expect(user.update).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('PATCH /api/user/preferences - the motion switch', () => {
+    for (const motion of ['auto', 'reduce']) {
+      it(`should accept the ${motion} motion and answer it back`, async () => {
+        const user = buildStoredUser({ preferredMotion: null });
+        mockDb.user.findByPk.mockResolvedValue(user);
+        const res = buildResponse();
+
+        await updatePreferences(buildRequest({ motion }), res);
+
+        expect(res.status).toHaveBeenCalledWith(200);
+        expect(user.update).toHaveBeenCalledWith({ preferredMotion: motion });
+        expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ motion }));
+      });
+    }
+
+    it('should reject a motion outside auto and reduce like an invalid theme', async () => {
+      const user = buildStoredUser();
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ motion: 'none' }), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'users.preferenceInvalid:motion' })
+      );
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('should clear the motion passed as null or blank', async () => {
+      const user = buildStoredUser({ preferredMotion: 'reduce' });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ motion: '' }), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(user.update).toHaveBeenCalledWith({ preferredMotion: null });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ motion: null }));
+    });
+
+    it('should delegate the motion to the identity provider for a federated account', async () => {
+      const user = buildStoredUser({ authProvider: 'oidc', preferredMotion: null });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      mockFavoriteHelpers.extractOidcAccessToken.mockReturnValue('oidc-token');
+      mockAxios.patch.mockResolvedValue({ status: 204 });
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ motion: 'reduce' }), res);
+
+      expect(mockAxios.patch).toHaveBeenCalledWith(
+        'https://idp.example.com/api/user/preferences',
+        { motion: 'reduce' },
+        expect.anything()
+      );
+      expect(user.update).toHaveBeenCalledWith({ preferredMotion: 'reduce' });
     });
   });
 

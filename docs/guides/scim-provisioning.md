@@ -86,10 +86,12 @@ keeps the event instead of dead-lettering it while BoxVault is still starting.
 | `entitlements[]` | `entitlements` | `value` required per entry; `type`/`display` kept when present. |
 | `urn:startcloud:…:User` `emailVerified` | `verified` | Also gates email-linking, below. |
 | `urn:startcloud:…:User` `primaryOrgUuid` | `primary_organization_id` | Applied only once that org is mirrored locally. |
+| `urn:startcloud:…:User` `preferences` | `preferredTheme`, `preferredPack`, `preferredMotion` | `{ theme, pack, motion }`; full desired state while the object is present, untouched while it is absent. |
 
 Every push is **full desired state**. An attribute absent from the payload is
 applied as "no value" — it clears the stored one. That is intentional and is why
-partial updates must not be sent as PUT.
+partial updates must not be sent as PUT. The one exception is the `preferences`
+object: a provider that does not carry it leaves the look the login claims set.
 
 ### Provisioning and email linking
 

@@ -177,7 +177,9 @@ nullable, and all follow the same three-tier contract:
 | `preferredLanguage` | `preferredLanguage` | `preferences.language` | the org's locale, then the configured default |
 | `locale` | `locale` | — | only a fallback for `preferredLanguage` |
 | `timezone` | `timezone` | — | — |
-| `preferredTheme` | — | `preferences.theme` | the browser-local choice |
+| `preferredTheme` | extension `preferences.theme` | `preferences.theme` | the browser-local choice |
+| `preferredPack` | extension `preferences.pack` | `preferences.pack` | the host's own pack |
+| `preferredMotion` | extension `preferences.motion` | `preferences.motion` | the device's reduced-motion setting |
 
 Local accounts have no provider, so both upper tiers are empty: `name` is set at
 registration or edited on the profile page, and `preferredLanguage` is captured
@@ -195,10 +197,14 @@ Two deliberate omissions:
 
 ### Colour scheme
 
-`preferredTheme` holds `light`, `dark`, or `auto` — the **variant only**. The
-brand pack is a property of the site, not of the person, so a user who belongs to
-two tenants never drags one tenant's branding into the other. A composed value
-such as `nomadservices-dark` is not a valid preference and is rejected on read.
+`preferredTheme` holds `light`, `dark`, or `auto` — the **variant only**. A
+composed value such as `nomadservices-dark` is not a valid preference and is
+rejected on read. `preferredPack` holds the bare name of the look the person
+chose, `lcars` say; a host offers it only while its `brand.packs` lists it or
+names no list at all, so a pack chosen at the identity provider is answered on
+`GET /api/user` as `preferred_pack` and the UI paints it where the host allows.
+`preferredMotion` holds `auto` or `reduce`, the person's reduced-motion switch,
+answered as `preferred_motion`.
 
 `auto` is stored as `auto`, never resolved before storage: the resolved
 light/dark is computed at render time from `prefers-color-scheme` and tracks the
@@ -211,8 +217,9 @@ in-app toggle afterwards still works.
 
 ### Saving a preference
 
-`PATCH /api/user/preferences` accepts `language`, `theme`, and `timezone`, all
-optional. An omitted key is left unchanged; `null` or `""` clears it.
+`PATCH /api/user/preferences` accepts `language`, `theme`, `pack`, `motion` and
+`timezone`, all optional. An omitted key is left unchanged; `null` or `""`
+clears it.
 
 Which store is authoritative depends on the account:
 

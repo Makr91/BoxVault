@@ -60,6 +60,11 @@ export default (sequelize, Sequelize) => {
         allowNull: true,
         field: 'preferred_pack',
       },
+      preferredMotion: {
+        type: Sequelize.STRING(10),
+        allowNull: true,
+        field: 'preferred_motion',
+      },
       timezone: {
         type: Sequelize.STRING(64),
         allowNull: true,
