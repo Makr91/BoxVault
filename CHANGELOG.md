@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.102.0](https://github.com/Makr91/BoxVault/compare/v0.101.1...v0.102.0) (2026-09-26)
+
+
+### Features
+
+* a person's pack and motion follow them from the identity provider ([39d603c](https://github.com/Makr91/BoxVault/commit/39d603cbfc1e4cedccc9962784abc5de67e763b3))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.49.0 ([6d58e36](https://github.com/Makr91/BoxVault/commit/6d58e36a1e475102f18ba0cb53621bfc820e9edd))
+* bump startcloud-ui to v0.49.0 ([e8a608d](https://github.com/Makr91/BoxVault/commit/e8a608d247840439d0841c57511f05ec45490ceb))
+
 ## [0.101.1](https://github.com/Makr91/BoxVault/compare/v0.101.0...v0.101.1) (2026-09-26)
 
 
