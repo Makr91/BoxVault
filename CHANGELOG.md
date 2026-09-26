@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.101.0](https://github.com/Makr91/BoxVault/compare/v0.100.2...v0.101.0) (2026-09-26)
+
+
+### Features
+
+* a host without a packs list offers every pack of the build ([104e8bf](https://github.com/Makr91/BoxVault/commit/104e8bf777ec8595254be3c8959b95628100117e))
+
 ## [0.100.2](https://github.com/Makr91/BoxVault/compare/v0.100.1...v0.100.2) (2026-09-26)
 
 
