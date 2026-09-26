@@ -32,20 +32,24 @@ const isClearing = value => value === null || value === '';
 
 /**
  * The packs a hostname lets a person choose: the bare names of its sites
- * entry's brand.packs, none for the unnamed hostname or a site without a list.
+ * entry's brand.packs in order, an empty list for an empty key, and null for
+ * the unnamed hostname or a site without the key, which offers every pack of
+ * the build.
  * @param {string} hostname - The request's hostname
- * @returns {string[]} The offered pack names
+ * @returns {string[]|null} The offered pack names, or null for every pack
  */
 const offeredPacks = hostname => {
   const packs = getSiteConfig(hostname)?.brand?.packs;
   return Array.isArray(packs)
     ? packs.filter(name => typeof name === 'string' && name.trim() !== '')
-    : [];
+    : null;
 };
 
 /**
- * The failing rule of the pack member: a value that is not a bare name the
- * host offers is refused enum at /pack; an absent or clearing value passes.
+ * The failing rule of the pack member: an absent or clearing value passes;
+ * without a brand.packs key any bare name passes and another shape is refused
+ * pattern at /pack; with the key a name outside the list is refused enum at
+ * /pack, every name when the list is empty.
  * @param {Object} body - Request body
  * @param {string} hostname - The request's hostname
  * @returns {{pointer: string, rule: string, params: Object}|null} The failing rule, or null
@@ -55,8 +59,12 @@ const packError = (body, hostname) => {
   if (typeof pack === 'undefined' || isClearing(pack)) {
     return null;
   }
+  const bareName = typeof pack === 'string' && PACK_PATTERN.test(pack);
   const offered = offeredPacks(hostname);
-  if (typeof pack === 'string' && PACK_PATTERN.test(pack) && offered.includes(pack)) {
+  if (offered === null) {
+    return bareName ? null : { pointer: '/pack', rule: 'pattern', params: { pattern: 'packName' } };
+  }
+  if (bareName && offered.includes(pack)) {
     return null;
   }
   return { pointer: '/pack', rule: 'enum', params: { enum: offered.join(', ') } };
@@ -154,7 +162,7 @@ const delegateToProvider = async (req, body) => {
  * /api/user/preferences:
  *   patch:
  *     summary: Update the signed-in user's preferences
- *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. pack is a bare pack name the hostname offers in its status payload's brand.packs, setting the person's look; a name the hostname does not offer is refused 422 enum at /pack. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
+ *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. pack is a bare pack name setting the person's look. A hostname whose sites entry has no brand.packs key offers every pack of the UI build, so any bare name is accepted there and another shape is refused 422 pattern at /pack; a hostname with the key accepts exactly the listed names and refuses any other 422 enum at /pack, every name when the list is empty. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -175,7 +183,7 @@ const delegateToProvider = async (req, body) => {
  *               pack:
  *                 type: string
  *                 nullable: true
- *                 description: A bare pack name of this hostname's brand.packs; null follows the hostname's own pack
+ *                 description: A bare pack name, any pack of the build on a hostname without brand.packs and one of the listed names on a hostname with it; null follows the hostname's own pack
  *               timezone:
  *                 type: string
  *                 nullable: true
@@ -200,7 +208,7 @@ const delegateToProvider = async (req, body) => {
  *                   type: string
  *                   nullable: true
  *       422:
- *         description: The pack is not one this hostname offers
+ *         description: The pack is not a bare name, or not one this hostname offers
  *         content:
  *           application/problem+json:
  *             schema:

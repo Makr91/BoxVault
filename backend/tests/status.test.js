@@ -77,6 +77,9 @@ describe('GET /api/status per Host', () => {
       ],
     });
     expect(plain.body.brand).not.toHaveProperty('packs');
+    const bare = await request(app).get('/api/status').set('Host', 'bare.test');
+    expect(bare.body.brand.name).toBe('Bare');
+    expect(bare.body.brand).not.toHaveProperty('packs');
     expect(res.body.links).toEqual({
       docs: 'https://docs.test',
       contact: 'help@test',

@@ -78,7 +78,8 @@ const packOf = site => {
 /**
  * The packs a person may choose on one hostname: its brand.packs list of
  * bare names in order, each with the stylesheet path built as pack.css is
- * and the name as its label; empty for a site without a list
+ * and the name as its label; empty for a site without the key, which the
+ * status leaves out so the UI offers every pack of its build
  * @param {Object|null} site - The sites map entry
  * @returns {Array<{name: string, css: string, label: string}>} The offered packs
  */
@@ -199,7 +200,7 @@ const featuresOf = (site, localEnabled) => {
  *                           example: /themes/prominic/prominic.css
  *                     packs:
  *                       type: array
- *                       description: The packs a person may choose on this hostname, in the order of its sites entry's brand.packs, present only while that list exists; the UI draws its Look picker from this list alone and a person's choice persists as the pack preference
+ *                       description: The packs a person may choose on this hostname, in the order of its sites entry's brand.packs, present only while that list has entries; absent, the UI offers every pack of its own build, and an empty list offers none; a person's choice persists as the pack preference
  *                       items:
  *                         type: object
  *                         required: [name, css, label]

@@ -388,14 +388,54 @@ describe('User Preferences', () => {
       expect(user.update).not.toHaveBeenCalled();
     });
 
-    it('should refuse every pack on a hostname that offers none', async () => {
+    it('should accept any bare name on a hostname without a packs key', async () => {
+      const user = buildStoredUser({ preferredPack: null });
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: 'anypack-9' }, 'face.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(user.update).toHaveBeenCalledWith({ preferredPack: 'anypack-9' });
+    });
+
+    it('should refuse a name that is not bare on a hostname without a packs key', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'testpack' }, 'face.test'), res);
+      await updatePreferences(buildRequest({ pack: 'Not A Pack' }, 'face.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [
+            expect.objectContaining({
+              pointer: '/pack',
+              rule: 'pattern',
+              params: { pattern: 'packName' },
+            }),
+          ],
+        })
+      );
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse every pack on a hostname whose packs key is empty', async () => {
+      const user = buildStoredUser();
+      mockDb.user.findByPk.mockResolvedValue(user);
+      const res = buildResponse();
+
+      await updatePreferences(buildRequest({ pack: 'testpack' }, 'bare.test'), res);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: [
+            expect.objectContaining({ pointer: '/pack', rule: 'enum', params: { enum: '' } }),
+          ],
+        })
+      );
       expect(user.update).not.toHaveBeenCalled();
     });
 

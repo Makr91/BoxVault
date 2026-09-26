@@ -80,6 +80,10 @@ export default () => {
         ],
         origin: 'https://face.test',
       },
+      'bare.test': {
+        brand: { name: 'Bare', packs: [] },
+        collections: ['downloads'],
+      },
     },
   };
 

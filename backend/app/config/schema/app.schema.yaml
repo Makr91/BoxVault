@@ -623,7 +623,7 @@ properties:
               items:
                 type: string
               title: Packs
-              description: The bare pack names a person may choose on this hostname, in order, each served at /themes/<name>/<name>.css and answered in the status payload as brand.packs; absent or empty offers no choice
+              description: The bare pack names a person may choose on this hostname, in order, each served at /themes/<name>/<name>.css and answered in the status payload as brand.packs; absent offers every pack of the UI build, empty offers no choice
               order: 6
         organization:
           type: string
