@@ -40,6 +40,9 @@ jest.unstable_mockModule('../app/middleware/scimAuth.js', () => ({
   scimError: mockScimError,
 }));
 
+const mockEvents = { notifyProfileUpdated: jest.fn() };
+jest.unstable_mockModule('../app/utils/events.js', () => mockEvents);
+
 const { createUser, putUser } = await import('../app/controllers/scim/users.js');
 
 const ISSUER = 'https://idp.example.com';
@@ -419,16 +422,18 @@ describe('SCIM Users receiver', () => {
       await putUser(buildRequest(matchingBody()), res);
 
       expect(storedUser.update).not.toHaveBeenCalled();
+      expect(mockEvents.notifyProfileUpdated).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it('should carry only the field that changed', async () => {
+    it('should carry only the field that changed and push profile-updated to the person', async () => {
       const res = buildResponse();
 
       await putUser(buildRequest(matchingBody({ timezone: 'Europe/Madrid' })), res);
 
       expect(storedUser.update).toHaveBeenCalledTimes(1);
       expect(storedUser.update).toHaveBeenCalledWith({ timezone: 'Europe/Madrid' });
+      expect(mockEvents.notifyProfileUpdated).toHaveBeenCalledWith(7);
     });
 
     it('should carry a renamed username on its own', async () => {

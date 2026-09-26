@@ -5,7 +5,7 @@ const HEARTBEAT_MS = 25000;
 const RING_MAX_EVENTS = 500;
 const RING_MAX_AGE_MS = 5 * 60 * 1000;
 
-const TOPICS = ['session', 'notifications', 'health'];
+const TOPICS = ['session', 'notifications', 'health', 'profile'];
 
 const ring = [];
 const subscribers = new Set();
@@ -173,6 +173,15 @@ const notifyUnreadCount = (userId, count) => {
 };
 
 /**
+ * Push profile-updated to every stream of a user whose record changed, so an
+ * open tab re-reads its profile and re-applies the look it carries.
+ * @param {number} userId - The user whose record changed
+ */
+const notifyProfileUpdated = userId => {
+  broadcast('profile', 'profile-updated', {}, userId);
+};
+
+/**
  * Push the health state to every stream subscribed to the health topic.
  * @param {{ status: string, timestamp: string, services: Object }} health - The /api/health shape
  */
@@ -186,5 +195,6 @@ export {
   broadcast,
   notifySessionTerminated,
   notifyUnreadCount,
+  notifyProfileUpdated,
   notifyHealth,
 };

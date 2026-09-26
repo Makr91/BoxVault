@@ -38,7 +38,7 @@ const STATUS = {
     'search',
     'events',
   ],
-  events: { path: '/api/events', topics: ['session', 'notifications', 'health'] },
+  events: { path: '/api/events', topics: ['session', 'notifications', 'health', 'profile'] },
   links: {
     docs: '/docs',
     contact: '',
@@ -299,10 +299,10 @@ const featuresOf = (site, localEnabled) => {
  *                       example: /api/events
  *                     topics:
  *                       type: array
- *                       description: Every topic this host streams; session sends session-terminated, notifications sends unread-count, health sends health with the /api/health shape when the status or a service state changes
+ *                       description: Every topic this host streams; session sends session-terminated, notifications sends unread-count, health sends health with the /api/health shape when the status or a service state changes, profile sends profile-updated to the one person whose record changed so an open tab re-reads GET /api/user
  *                       items:
  *                         type: string
- *                       example: [session, notifications, health]
+ *                       example: [session, notifications, health, profile]
  *                 links:
  *                   type: object
  *                   required: [docs, contact, community]

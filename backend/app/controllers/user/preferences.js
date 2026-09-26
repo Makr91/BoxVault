@@ -12,6 +12,7 @@ import { problem, refuse } from '../../utils/problem.js';
 import { getSiteConfig } from '../../utils/config-loader.js';
 import db from '../../models/index.js';
 import { getAuthServerUrl, extractOidcAccessToken } from '../favorites/helpers.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 
 const { user: User } = db;
 
@@ -304,6 +305,7 @@ export const updatePreferences = async (req, res) => {
     }
 
     await user.update(patch);
+    notifyProfileUpdated(user.id);
     return res.status(200).send(toWireShape(user));
   } catch (err) {
     log.error.error('Error updating preferences:', err);

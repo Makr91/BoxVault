@@ -22,6 +22,9 @@ jest.unstable_mockModule('../app/models/index.js', () => ({ default: mockDb }));
 jest.unstable_mockModule('axios', () => ({ default: mockAxios }));
 jest.unstable_mockModule('../app/controllers/favorites/helpers.js', () => mockFavoriteHelpers);
 
+const mockEvents = { notifyProfileUpdated: jest.fn() };
+jest.unstable_mockModule('../app/utils/events.js', () => mockEvents);
+
 const { updatePreferences } = await import('../app/controllers/user/preferences.js');
 
 const buildRequest = (body, hostname) => ({
@@ -42,6 +45,7 @@ const buildResponse = () => {
 
 const buildStoredUser = (stored = {}) => {
   const user = {
+    id: 42,
     authProvider: 'local',
     preferredLanguage: 'en',
     preferredTheme: 'light',
@@ -332,6 +336,7 @@ describe('User Preferences', () => {
       await updatePreferences(buildRequest({}), res);
 
       expect(user.update).not.toHaveBeenCalled();
+      expect(mockEvents.notifyProfileUpdated).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
@@ -368,6 +373,7 @@ describe('User Preferences', () => {
         expect(res.status).toHaveBeenCalledWith(200);
         expect(user.update).toHaveBeenCalledWith({ preferredMotion: motion });
         expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ motion }));
+        expect(mockEvents.notifyProfileUpdated).toHaveBeenCalledWith(42);
       });
     }
 

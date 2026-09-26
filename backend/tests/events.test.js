@@ -3,7 +3,12 @@ import { createServer } from 'http';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import jwt from 'jsonwebtoken';
-import { notifyHealth, notifySessionTerminated, notifyUnreadCount } from '../app/utils/events.js';
+import {
+  notifyHealth,
+  notifyProfileUpdated,
+  notifySessionTerminated,
+  notifyUnreadCount,
+} from '../app/utils/events.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const STREAM_TYPE = 'text/event-stream';
@@ -132,7 +137,7 @@ describe('Events API', () => {
       expect(res.body.features).toContain('events');
       expect(res.body.events).toEqual({
         path: '/api/events',
-        topics: ['session', 'notifications', 'health'],
+        topics: ['session', 'notifications', 'health', 'profile'],
       });
       expect(res.body.config).toEqual(['app', 'auth', 'db', 'mail']);
     });
@@ -182,8 +187,39 @@ describe('Events API', () => {
       partial.close();
 
       const empty = await openStream({ headers: { 'x-access-token': userToken } });
-      expect(empty.frames()[0].data.topics).toEqual(['session', 'notifications', 'health']);
+      expect(empty.frames()[0].data.topics).toEqual([
+        'session',
+        'notifications',
+        'health',
+        'profile',
+      ]);
       empty.close();
+    });
+
+    it('should deliver profile-updated to the person whose record changed and to nobody else', async () => {
+      const mine = await openStream({
+        headers: { 'x-access-token': userToken },
+        query: '?topics=profile',
+      });
+      const theirs = await openStream({ headers: { 'x-access-token': otherToken } });
+
+      notifyProfileUpdated(user.id);
+      const frames = await mine.readUntil(2);
+      expect(frames[1].event).toBe('profile-updated');
+      expect(frames[1].data).toEqual({});
+      expect(theirs.frames()).toHaveLength(1);
+
+      const patched = await request(app)
+        .patch('/api/user/preferences')
+        .set('x-access-token', otherToken)
+        .send({ motion: 'reduce' });
+      expect(patched.statusCode).toBe(200);
+      const otherFrames = await theirs.readUntil(2);
+      expect(otherFrames[1].event).toBe('profile-updated');
+      expect(mine.frames()).toHaveLength(2);
+
+      mine.close();
+      theirs.close();
     });
 
     it('should deliver a health event to every subscriber of the topic', async () => {

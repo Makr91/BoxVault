@@ -5,6 +5,7 @@ import { log } from '../../utils/Logger.js';
 import { generateEmailHash, isHttpUrl } from '../../utils/identity.js';
 import { loadConfig } from '../../utils/config-loader.js';
 import externalUserHandler from '../../auth/external-user-handler.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 import db from '../../models/index.js';
 import {
   SCIM_USER_EXTENSION,
@@ -487,7 +488,8 @@ const applyPrimaryOrgPointer = async (user, primaryOrgUuid, patch) => {
 
 /**
  * Apply the pushed full desired state to the stored user: field diff plus the
- * primaryOrgUuid pointer (when that org is already mirrored locally).
+ * primaryOrgUuid pointer (when that org is already mirrored locally); a
+ * record that changed pushes profile-updated to the person's open streams.
  * @param {Object} user - BoxVault user instance
  * @param {Object} state - Parsed desired state
  * @returns {Promise<void>}
@@ -499,6 +501,7 @@ const applyUserState = async (user, state) => {
   }
   if (Object.keys(patch).length) {
     await user.update(patch);
+    notifyProfileUpdated(user.id);
   }
 };
 

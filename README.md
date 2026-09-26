@@ -130,7 +130,7 @@ For detailed packaging and build instructions, see [packaging/README.md](packagi
 
 ### Events
 
-- `GET /api/events?topics=session,notifications`: The one server-sent event stream of the universal events contract; `session` sends `session-terminated`, `notifications` sends `unread-count`.
+- `GET /api/events?topics=session,notifications,profile`: The one server-sent event stream of the universal events contract; `session` sends `session-terminated`, `notifications` sends `unread-count`, `profile` sends `profile-updated` when the person's record changed outside the tab.
 
 ## Contributing
 
