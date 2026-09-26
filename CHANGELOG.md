@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.103.0](https://github.com/Makr91/BoxVault/compare/v0.102.0...v0.103.0) (2026-09-26)
+
+
+### Features
+
+* an open tab hears profile-updated when a person's record changes ([60fa69e](https://github.com/Makr91/BoxVault/commit/60fa69ec4909a4518c1ea731d31434b980aaa9e6))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.50.0 ([67dc159](https://github.com/Makr91/BoxVault/commit/67dc15918e41f1d125185bde05b01d68716a960a))
+* bump startcloud-ui to v0.50.0 ([5d2d813](https://github.com/Makr91/BoxVault/commit/5d2d813272ee8aef1f148ed915b1b9945f712283))
+
 ## [0.102.0](https://github.com/Makr91/BoxVault/compare/v0.101.1...v0.102.0) (2026-09-26)
 
 
