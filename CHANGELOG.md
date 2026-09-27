@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.104.0](https://github.com/Makr91/BoxVault/compare/v0.103.0...v0.104.0) (2026-09-27)
+
+
+### Features
+
+* profile reads carry no token and every profile change reaches the tab ([45c3200](https://github.com/Makr91/BoxVault/commit/45c3200003a4487b66286298af97f8b6efc29063))
+
 ## [0.103.0](https://github.com/Makr91/BoxVault/compare/v0.102.0...v0.103.0) (2026-09-26)
 
 
