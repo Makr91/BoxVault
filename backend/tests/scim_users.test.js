@@ -471,7 +471,7 @@ describe('SCIM Users receiver', () => {
     });
 
     it('should leave the look preferences alone when the extension carries no preferences object', async () => {
-      Object.assign(storedUser, { preferredTheme: 'dark', preferredPack: 'lcars' });
+      Object.assign(storedUser, { preferredMode: 'dark', preferredTheme: 'lcars' });
       const res = buildResponse();
 
       await putUser(buildRequest(matchingBody({ [USER_EXTENSION]: { emailVerified: true } })), res);
@@ -480,23 +480,23 @@ describe('SCIM Users receiver', () => {
     });
 
     it('should apply the preferences object as full desired state', async () => {
-      Object.assign(storedUser, { preferredTheme: 'dark', preferredPack: 'lcars' });
+      Object.assign(storedUser, { preferredMode: 'dark', preferredTheme: 'lcars' });
       const res = buildResponse();
       const body = matchingBody({
-        [USER_EXTENSION]: { preferences: { theme: 'light', motion: 'reduce', pack: 'Bad Pack' } },
+        [USER_EXTENSION]: { preferences: { mode: 'light', motion: 'reduce', theme: 'Bad Theme' } },
       });
 
       await putUser(buildRequest(body), res);
 
       expect(storedUser.update).toHaveBeenCalledWith({
-        preferredTheme: 'light',
-        preferredPack: null,
+        preferredMode: 'light',
+        preferredTheme: null,
         preferredMotion: 'reduce',
       });
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           [USER_EXTENSION]: expect.objectContaining({
-            preferences: { theme: 'light', pack: null, motion: 'reduce' },
+            preferences: { mode: 'light', theme: null, motion: 'reduce' },
           }),
         })
       );
@@ -504,27 +504,27 @@ describe('SCIM Users receiver', () => {
 
     it('should clear the three look columns on a push carrying three nulls and push profile-updated', async () => {
       Object.assign(storedUser, {
-        preferredTheme: 'dark',
-        preferredPack: 'lcars',
+        preferredMode: 'dark',
+        preferredTheme: 'lcars',
         preferredMotion: 'reduce',
       });
       const res = buildResponse();
       const body = matchingBody({
-        [USER_EXTENSION]: { preferences: { theme: null, pack: null, motion: null } },
+        [USER_EXTENSION]: { preferences: { mode: null, theme: null, motion: null } },
       });
 
       await putUser(buildRequest(body), res);
 
       expect(storedUser.update).toHaveBeenCalledWith({
+        preferredMode: null,
         preferredTheme: null,
-        preferredPack: null,
         preferredMotion: null,
       });
       expect(mockEvents.notifyProfileUpdated).toHaveBeenCalledWith(7);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           [USER_EXTENSION]: expect.objectContaining({
-            preferences: { theme: null, pack: null, motion: null },
+            preferences: { mode: null, theme: null, motion: null },
           }),
         })
       );
@@ -746,7 +746,7 @@ describe('SCIM Users receiver', () => {
             active: true,
             [USER_EXTENSION]: {
               emailVerified: true,
-              preferences: { theme: 'dark', pack: 'lcars', motion: 'reduce' },
+              preferences: { mode: 'dark', theme: 'lcars', motion: 'reduce' },
             },
           },
           {}
@@ -762,8 +762,8 @@ describe('SCIM Users receiver', () => {
           preferredLanguage: 'es-MX',
           locale: 'es-MX',
           timezone: 'Europe/Madrid',
-          preferredTheme: 'dark',
-          preferredPack: 'lcars',
+          preferredMode: 'dark',
+          preferredTheme: 'lcars',
           preferredMotion: 'reduce',
           suspended: false,
           verified: true,

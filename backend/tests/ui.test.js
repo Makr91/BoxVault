@@ -41,12 +41,13 @@ describe('The served UI build', () => {
     expect(callback.headers['cache-control']).toBe('no-store, no-transform');
   });
 
-  it('should stamp the theme, the brand and the pack link of a named hostname', async () => {
+  it('should stamp the theme and its link on a named hostname and never a mode', async () => {
     const res = await request(app).get('/').set('Host', 'downloads.test');
     expect(res.statusCode).toBe(200);
-    expect(res.text).toContain('<html data-brand-theme="dark" data-brand="testpack"');
+    expect(res.text).toContain('<html data-brand="testtheme"');
+    expect(res.text).not.toContain(' data-brand-theme="');
     expect(res.text).toContain(
-      '<link rel="stylesheet" href="/themes/testpack/testpack.css"></head>'
+      '<link rel="stylesheet" href="/themes/testtheme/testtheme.css"></head>'
     );
   });
 

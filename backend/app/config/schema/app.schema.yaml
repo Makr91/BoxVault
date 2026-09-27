@@ -604,27 +604,18 @@ properties:
               title: Logo URL
               description: Path of the brand mark served for this hostname, the mark.svg of a folder under /brand/; that folder also names the icons of the hostname's manifest and page
               order: 3
-            default_theme:
+            theme:
               type: string
-              enum:
-                - light
-                - dark
-              default: light
-              title: Default theme
-              description: The variant stamped on the page before a person has chosen one
+              title: Theme
+              description: The bare theme name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints the default theme. A host names no mode, light, dark or the operating system's is the person's
               order: 4
-            pack:
-              type: string
-              title: Pack
-              description: The bare pack name stamped as data-brand, its stylesheet served at /themes/<name>/<name>.css; empty paints stock Bootstrap
-              order: 5
-            packs:
+            themes:
               type: array
               items:
                 type: string
-              title: Packs
-              description: The bare pack names a person may choose on this hostname, in order, each served at /themes/<name>/<name>.css and answered in the status payload as brand.packs; absent offers every pack of the UI build, empty offers no choice
-              order: 6
+              title: Themes
+              description: The bare theme names a person may choose on this hostname, in order, each served at /themes/<name>/<name>.css and answered in the status payload as brand.themes; absent offers every theme of the UI build, empty offers no choice
+              order: 5
         organization:
           type: string
           title: Organization

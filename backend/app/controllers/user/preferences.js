@@ -1,4 +1,4 @@
-// preferences.js — language / theme / pack / motion / timezone for the signed-in user.
+// preferences.js — language / mode / theme / motion / timezone for the signed-in user.
 //
 // Federated accounts: the identity provider owns these, so a write is
 // delegated to its PATCH /api/user/preferences on the acting user's own token
@@ -19,7 +19,7 @@ const { user: User } = db;
 const badRequest = (req, res, title) =>
   problem(res, req, { status: 400, type: 'bad-request', title });
 
-const THEMES = ['light', 'dark', 'auto'];
+const MODES = ['light', 'dark', 'auto'];
 const MOTIONS = ['auto', 'reduce'];
 // RFC 5646 shape check only — the provider validates the tag itself.
 const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})*$/;
@@ -28,48 +28,50 @@ const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{2,8})*$/;
 // set to something a federated one would be refused.
 const MAX_LANGUAGE_LENGTH = 10;
 
-const PACK_PATTERN = /^[a-z0-9-]+$/;
+const THEME_NAME_PATTERN = /^[a-z0-9-]+$/;
 
 const isClearing = value => value === null || value === '';
 
 /**
- * The packs a hostname lets a person choose: the bare names of its sites
- * entry's brand.packs in order, an empty list for an empty key, and null for
- * the unnamed hostname or a site without the key, which offers every pack of
+ * The themes a hostname lets a person choose: the bare names of its sites
+ * entry's brand.themes in order, an empty list for an empty key, and null for
+ * the unnamed hostname or a site without the key, which offers every theme of
  * the build.
  * @param {string} hostname - The request's hostname
- * @returns {string[]|null} The offered pack names, or null for every pack
+ * @returns {string[]|null} The offered theme names, or null for every theme
  */
-const offeredPacks = hostname => {
-  const packs = getSiteConfig(hostname)?.brand?.packs;
-  return Array.isArray(packs)
-    ? packs.filter(name => typeof name === 'string' && name.trim() !== '')
+const offeredThemes = hostname => {
+  const themes = getSiteConfig(hostname)?.brand?.themes;
+  return Array.isArray(themes)
+    ? themes.filter(name => typeof name === 'string' && name.trim() !== '')
     : null;
 };
 
 /**
- * The failing rule of the pack member: an absent or clearing value passes;
- * without a brand.packs key any bare name passes and another shape is refused
- * pattern at /pack; with the key a name outside the list is refused enum at
- * /pack, every name when the list is empty.
+ * The failing rule of the theme member: an absent or clearing value passes;
+ * without a brand.themes key any bare name passes and another shape is refused
+ * pattern at /theme; with the key a name outside the list is refused enum at
+ * /theme, every name when the list is empty.
  * @param {Object} body - Request body
  * @param {string} hostname - The request's hostname
  * @returns {{pointer: string, rule: string, params: Object}|null} The failing rule, or null
  */
-const packError = (body, hostname) => {
-  const { pack } = body;
-  if (typeof pack === 'undefined' || isClearing(pack)) {
+const themeError = (body, hostname) => {
+  const { theme } = body;
+  if (typeof theme === 'undefined' || isClearing(theme)) {
     return null;
   }
-  const bareName = typeof pack === 'string' && PACK_PATTERN.test(pack);
-  const offered = offeredPacks(hostname);
+  const bareName = typeof theme === 'string' && THEME_NAME_PATTERN.test(theme);
+  const offered = offeredThemes(hostname);
   if (offered === null) {
-    return bareName ? null : { pointer: '/pack', rule: 'pattern', params: { pattern: 'packName' } };
+    return bareName
+      ? null
+      : { pointer: '/theme', rule: 'pattern', params: { pattern: 'themeName' } };
   }
-  if (bareName && offered.includes(pack)) {
+  if (bareName && offered.includes(theme)) {
     return null;
   }
-  return { pointer: '/pack', rule: 'enum', params: { enum: offered.join(', ') } };
+  return { pointer: '/theme', rule: 'enum', params: { enum: offered.join(', ') } };
 };
 
 // Asking the runtime beats pattern-matching the string: plenty of valid IANA
@@ -92,7 +94,7 @@ const isKnownTimezone = value => {
  * @returns {string|null} Invalid field name, or null when acceptable
  */
 const findInvalidField = body => {
-  const { language, theme, motion, timezone } = body;
+  const { language, mode, motion, timezone } = body;
 
   if (typeof language !== 'undefined' && !isClearing(language)) {
     if (
@@ -103,8 +105,8 @@ const findInvalidField = body => {
       return 'language';
     }
   }
-  if (typeof theme !== 'undefined' && !isClearing(theme) && !THEMES.includes(theme)) {
-    return 'theme';
+  if (typeof mode !== 'undefined' && !isClearing(mode) && !MODES.includes(mode)) {
+    return 'mode';
   }
   if (typeof motion !== 'undefined' && !isClearing(motion) && !MOTIONS.includes(motion)) {
     return 'motion';
@@ -127,8 +129,8 @@ const buildPatch = body => {
   const patch = {};
   const columns = {
     language: 'preferredLanguage',
+    mode: 'preferredMode',
     theme: 'preferredTheme',
-    pack: 'preferredPack',
     motion: 'preferredMotion',
     timezone: 'timezone',
   };
@@ -143,8 +145,8 @@ const buildPatch = body => {
 
 const toWireShape = user => ({
   language: user.preferredLanguage || null,
+  mode: user.preferredMode || null,
   theme: user.preferredTheme || null,
-  pack: user.preferredPack || null,
   motion: user.preferredMotion || null,
   timezone: user.timezone || null,
 });
@@ -169,7 +171,7 @@ const delegateToProvider = async (req, body) => {
  * /api/user/preferences:
  *   patch:
  *     summary: Update the signed-in user's preferences
- *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. motion is the person's reduced-motion switch, auto following the device and reduce turning every animation off, refused 400 like an invalid theme otherwise. pack is a bare pack name setting the person's look. A hostname whose sites entry has no brand.packs key offers every pack of the UI build, so any bare name is accepted there and another shape is refused 422 pattern at /pack; a hostname with the key accepts exactly the listed names and refuses any other 422 enum at /pack, every name when the list is empty. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
+ *     description: Every key is optional. An omitted key is left unchanged; null or an empty string clears it. mode is light, dark or auto, auto following the operating system, refused 400 otherwise. motion is the person's reduced-motion switch, auto following the device and reduce turning every animation off, refused 400 like an invalid mode otherwise. theme is a bare theme name setting the person's look. A hostname whose sites entry has no brand.themes key offers every theme of the UI build, so any bare name is accepted there and another shape is refused 422 pattern at /theme; a hostname with the key accepts exactly the listed names and refuses any other 422 enum at /theme, every name when the list is empty. For accounts backed by an identity provider the write is delegated there first and mirrored locally only on success.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -183,14 +185,15 @@ const delegateToProvider = async (req, body) => {
  *               language:
  *                 type: string
  *                 nullable: true
- *               theme:
+ *               mode:
  *                 type: string
  *                 nullable: true
  *                 enum: [light, dark, auto]
- *               pack:
+ *                 description: The mode; null follows the operating system
+ *               theme:
  *                 type: string
  *                 nullable: true
- *                 description: A bare pack name, any pack of the build on a hostname without brand.packs and one of the listed names on a hostname with it; null follows the hostname's own pack
+ *                 description: A bare theme name, any theme of the build on a hostname without brand.themes and one of the listed names on a hostname with it; null follows the hostname's own theme
  *               motion:
  *                 type: string
  *                 nullable: true
@@ -210,10 +213,10 @@ const delegateToProvider = async (req, body) => {
  *                 language:
  *                   type: string
  *                   nullable: true
- *                 theme:
+ *                 mode:
  *                   type: string
  *                   nullable: true
- *                 pack:
+ *                 theme:
  *                   type: string
  *                   nullable: true
  *                 motion:
@@ -223,7 +226,7 @@ const delegateToProvider = async (req, body) => {
  *                   type: string
  *                   nullable: true
  *       422:
- *         description: The pack is not a bare name, or not one this hostname offers
+ *         description: The theme is not a bare name, or not one this hostname offers
  *         content:
  *           application/problem+json:
  *             schema:
@@ -260,9 +263,9 @@ export const updatePreferences = async (req, res) => {
   if (invalidField) {
     return badRequest(req, res, req.__('users.preferenceInvalid', { invalidField }));
   }
-  const packFailure = packError(body, req.hostname);
-  if (packFailure) {
-    return refuse(res, req, [packFailure]);
+  const themeFailure = themeError(body, req.hostname);
+  if (themeFailure) {
+    return refuse(res, req, [themeFailure]);
   }
 
   try {

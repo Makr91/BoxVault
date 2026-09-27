@@ -177,8 +177,8 @@ nullable, and all follow the same three-tier contract:
 | `preferredLanguage` | `preferredLanguage` | `preferences.language` | the org's locale, then the configured default |
 | `locale` | `locale` | — | only a fallback for `preferredLanguage` |
 | `timezone` | `timezone` | — | — |
-| `preferredTheme` | extension `preferences.theme` | `preferences.theme` | the browser-local choice |
-| `preferredPack` | extension `preferences.pack` | `preferences.pack` | the host's own pack |
+| `preferredMode` | extension `preferences.mode` | `preferences.mode` | the operating system's scheme |
+| `preferredTheme` | extension `preferences.theme` | `preferences.theme` | the host's own theme, the default theme when it names none |
 | `preferredMotion` | extension `preferences.motion` | `preferences.motion` | the device's reduced-motion setting |
 
 Local accounts have no provider, so both upper tiers are empty: `name` is set at
@@ -195,21 +195,24 @@ Two deliberate omissions:
   provider's `userName` and is overwritten on every push, which is why `name`
   exists as a separate, user-owned field.
 
-### Colour scheme
+### Mode and theme
 
-`preferredTheme` holds `light`, `dark`, or `auto` — the **variant only**. A
-composed value such as `nomadservices-dark` is not a valid preference and is
-rejected on read. `preferredPack` holds the bare name of the look the person
-chose, `lcars` say; a host offers it only while its `brand.packs` lists it or
-names no list at all, so a pack chosen at the identity provider is answered on
-`GET /api/user` as `preferred_pack` and the UI paints it where the host allows.
-`preferredMotion` holds `auto` or `reduce`, the person's reduced-motion switch,
-answered as `preferred_motion`.
+The mode is light, dark or the operating system's; the theme is the look, its
+files, fonts, images and brand. `preferredMode` holds `light`, `dark`, or
+`auto`, answered as `preferred_mode`; a composed value such as
+`nomadservices-dark` is not a mode and is rejected on read. A host never names
+a mode: a first-time visitor gets the operating system's scheme.
+`preferredTheme` holds the bare name of the theme the person chose, `lcars`
+say, answered as `preferred_theme`; a host offers it only while its
+`brand.themes` lists it or names no list at all, so a theme chosen at the
+identity provider is painted where the host allows, and a name the build does
+not hold falls to the default theme. `preferredMotion` holds `auto` or
+`reduce`, the person's reduced-motion switch, answered as `preferred_motion`.
 
 `auto` is stored as `auto`, never resolved before storage: the resolved
 light/dark is computed at render time from `prefers-color-scheme` and tracks the
 operating system live. The stored preference and the applied value are
-deliberately separate — collapsing them is what makes a theme toggle freeze at
+deliberately separate — collapsing them is what makes a mode toggle freeze at
 whatever it happened to resolve to on first load.
 
 The account value is applied when it changes, not on every render, so using the
@@ -217,7 +220,7 @@ in-app toggle afterwards still works.
 
 ### Saving a preference
 
-`PATCH /api/user/preferences` accepts `language`, `theme`, `pack`, `motion` and
+`PATCH /api/user/preferences` accepts `language`, `mode`, `theme`, `motion` and
 `timezone`, all optional. An omitted key is left unchanged; `null` or `""`
 clears it.
 
@@ -232,7 +235,7 @@ Which store is authoritative depends on the account:
 - **Local accounts** — there is no provider, so the BoxVault columns are the
   whole story and the write applies directly.
 
-The language switcher and the theme toggle both write through automatically for
+The language switcher and the mode toggle both write through automatically for
 signed-in users. Both are fire-and-forget: the interface changes immediately and
 a failed save is logged rather than blocking the click.
 

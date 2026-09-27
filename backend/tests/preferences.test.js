@@ -48,7 +48,7 @@ const buildStoredUser = (stored = {}) => {
     id: 42,
     authProvider: 'local',
     preferredLanguage: 'en',
-    preferredTheme: 'light',
+    preferredMode: 'light',
     timezone: 'America/Chicago',
     ...stored,
   };
@@ -92,16 +92,16 @@ describe('User Preferences', () => {
       expect(user.update).toHaveBeenCalledWith({ preferredLanguage: 'zh-Hant-TW' });
     });
 
-    for (const theme of ['light', 'dark', 'auto']) {
-      it(`should accept the ${theme} theme`, async () => {
-        const user = buildStoredUser({ preferredTheme: null });
+    for (const mode of ['light', 'dark', 'auto']) {
+      it(`should accept the ${mode} mode`, async () => {
+        const user = buildStoredUser({ preferredMode: null });
         mockDb.user.findByPk.mockResolvedValue(user);
         const res = buildResponse();
 
-        await updatePreferences(buildRequest({ theme }), res);
+        await updatePreferences(buildRequest({ mode }), res);
 
         expect(res.status).toHaveBeenCalledWith(200);
-        expect(user.update).toHaveBeenCalledWith({ preferredTheme: theme });
+        expect(user.update).toHaveBeenCalledWith({ preferredMode: mode });
       });
     }
 
@@ -127,31 +127,31 @@ describe('User Preferences', () => {
       mockDb.user.findByPk.mockResolvedValue(user);
     });
 
-    it('should reject a composed theme name', async () => {
+    it('should reject a composed mode name', async () => {
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'nomadservices-dark' }), res);
+      await updatePreferences(buildRequest({ mode: 'nomadservices-dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'https://auth.startcloud.com/probs/bad-request',
-          title: 'users.preferenceInvalid:theme',
+          title: 'users.preferenceInvalid:mode',
         })
       );
       expect(user.update).not.toHaveBeenCalled();
     });
 
-    it('should reject a theme that is not a string', async () => {
+    it('should reject a mode that is not a string', async () => {
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 7 }), res);
+      await updatePreferences(buildRequest({ mode: 7 }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'https://auth.startcloud.com/probs/bad-request',
-          title: 'users.preferenceInvalid:theme',
+          title: 'users.preferenceInvalid:mode',
         })
       );
     });
@@ -231,7 +231,7 @@ describe('User Preferences', () => {
     it('should reject before looking the user up', async () => {
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'sepia' }), res);
+      await updatePreferences(buildRequest({ mode: 'sepia' }), res);
 
       expect(mockDb.user.findByPk).not.toHaveBeenCalled();
     });
@@ -241,19 +241,19 @@ describe('User Preferences', () => {
     it('should leave an omitted key untouched', async () => {
       const user = buildStoredUser({
         preferredLanguage: 'en',
-        preferredTheme: 'light',
+        preferredMode: 'light',
         timezone: 'America/Chicago',
       });
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'dark' }), res);
+      await updatePreferences(buildRequest({ mode: 'dark' }), res);
 
-      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'dark' });
+      expect(user.update).toHaveBeenCalledWith({ preferredMode: 'dark' });
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
-        theme: 'dark',
-        pack: null,
+        mode: 'dark',
+        theme: null,
         motion: null,
         timezone: 'America/Chicago',
       });
@@ -270,8 +270,8 @@ describe('User Preferences', () => {
       expect(user.update).toHaveBeenCalledWith({ preferredLanguage: null });
       expect(res.send).toHaveBeenCalledWith({
         language: null,
-        theme: 'light',
-        pack: null,
+        mode: 'light',
+        theme: null,
         motion: null,
         timezone: 'America/Chicago',
       });
@@ -288,8 +288,8 @@ describe('User Preferences', () => {
       expect(user.update).toHaveBeenCalledWith({ timezone: null });
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
-        theme: 'light',
-        pack: null,
+        mode: 'light',
+        theme: null,
         motion: null,
         timezone: null,
       });
@@ -300,21 +300,21 @@ describe('User Preferences', () => {
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ language: null, theme: '' }), res);
+      await updatePreferences(buildRequest({ language: null, mode: '' }), res);
 
-      expect(user.update).toHaveBeenCalledWith({ preferredLanguage: null, preferredTheme: null });
+      expect(user.update).toHaveBeenCalledWith({ preferredLanguage: null, preferredMode: null });
       expect(Object.keys(user.update.mock.calls[0][0])).not.toContain('timezone');
     });
 
-    it('should not treat a cleared theme as an invalid theme', async () => {
+    it('should not treat a cleared mode as an invalid mode', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: null }), res);
+      await updatePreferences(buildRequest({ mode: null }), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(user.update).toHaveBeenCalledWith({ preferredTheme: null });
+      expect(user.update).toHaveBeenCalledWith({ preferredMode: null });
     });
 
     it('should not treat a cleared timezone as an unknown zone', async () => {
@@ -340,8 +340,8 @@ describe('User Preferences', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.send).toHaveBeenCalledWith({
         language: 'en',
-        theme: 'light',
-        pack: null,
+        mode: 'light',
+        theme: null,
         motion: null,
         timezone: 'America/Chicago',
       });
@@ -377,7 +377,7 @@ describe('User Preferences', () => {
       });
     }
 
-    it('should reject a motion outside auto and reduce like an invalid theme', async () => {
+    it('should reject a motion outside auto and reduce like an invalid mode', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
@@ -421,25 +421,25 @@ describe('User Preferences', () => {
     });
   });
 
-  describe('PATCH /api/user/preferences - the pack', () => {
-    it('should accept a pack the hostname offers and answer it back', async () => {
-      const user = buildStoredUser({ preferredPack: null });
+  describe('PATCH /api/user/preferences - the theme', () => {
+    it('should accept a theme the hostname offers and answer it back', async () => {
+      const user = buildStoredUser({ preferredTheme: null });
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'otherpack' }, 'downloads.test'), res);
+      await updatePreferences(buildRequest({ theme: 'othertheme' }, 'downloads.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(user.update).toHaveBeenCalledWith({ preferredPack: 'otherpack' });
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: 'otherpack' }));
+      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'othertheme' });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ theme: 'othertheme' }));
     });
 
-    it('should refuse a pack the hostname does not offer as 422 enum at /pack', async () => {
+    it('should refuse a theme the hostname does not offer as 422 enum at /theme', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'sibling' }, 'downloads.test'), res);
+      await updatePreferences(buildRequest({ theme: 'sibling' }, 'downloads.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(422);
       expect(res.send).toHaveBeenCalledWith(
@@ -447,9 +447,9 @@ describe('User Preferences', () => {
           type: 'https://auth.startcloud.com/probs/validation',
           errors: [
             expect.objectContaining({
-              pointer: '/pack',
+              pointer: '/theme',
               rule: 'enum',
-              params: { enum: 'testpack, otherpack' },
+              params: { enum: 'testtheme, othertheme' },
             }),
           ],
         })
@@ -457,32 +457,32 @@ describe('User Preferences', () => {
       expect(user.update).not.toHaveBeenCalled();
     });
 
-    it('should accept any bare name on a hostname without a packs key', async () => {
-      const user = buildStoredUser({ preferredPack: null });
+    it('should accept any bare name on a hostname without a themes key', async () => {
+      const user = buildStoredUser({ preferredTheme: null });
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'anypack-9' }, 'face.test'), res);
+      await updatePreferences(buildRequest({ theme: 'anytheme-9' }, 'face.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(user.update).toHaveBeenCalledWith({ preferredPack: 'anypack-9' });
+      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'anytheme-9' });
     });
 
-    it('should refuse a name that is not bare on a hostname without a packs key', async () => {
+    it('should refuse a name that is not bare on a hostname without a themes key', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'Not A Pack' }, 'face.test'), res);
+      await updatePreferences(buildRequest({ theme: 'Not A Theme' }, 'face.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(422);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
           errors: [
             expect.objectContaining({
-              pointer: '/pack',
+              pointer: '/theme',
               rule: 'pattern',
-              params: { pattern: 'packName' },
+              params: { pattern: 'themeName' },
             }),
           ],
         })
@@ -490,45 +490,45 @@ describe('User Preferences', () => {
       expect(user.update).not.toHaveBeenCalled();
     });
 
-    it('should refuse every pack on a hostname whose packs key is empty', async () => {
+    it('should refuse every theme on a hostname whose themes key is empty', async () => {
       const user = buildStoredUser();
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: 'testpack' }, 'bare.test'), res);
+      await updatePreferences(buildRequest({ theme: 'testtheme' }, 'bare.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(422);
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
           errors: [
-            expect.objectContaining({ pointer: '/pack', rule: 'enum', params: { enum: '' } }),
+            expect.objectContaining({ pointer: '/theme', rule: 'enum', params: { enum: '' } }),
           ],
         })
       );
       expect(user.update).not.toHaveBeenCalled();
     });
 
-    it('should clear the pack passed as null', async () => {
-      const user = buildStoredUser({ preferredPack: 'testpack' });
+    it('should clear the theme passed as null', async () => {
+      const user = buildStoredUser({ preferredTheme: 'testtheme' });
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ pack: null }, 'downloads.test'), res);
+      await updatePreferences(buildRequest({ theme: null }, 'downloads.test'), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(user.update).toHaveBeenCalledWith({ preferredPack: null });
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: null }));
+      expect(user.update).toHaveBeenCalledWith({ preferredTheme: null });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ theme: null }));
     });
 
-    it('should leave the pack untouched when omitted', async () => {
-      const user = buildStoredUser({ preferredPack: 'testpack' });
+    it('should leave the theme untouched when omitted', async () => {
+      const user = buildStoredUser({ preferredTheme: 'testtheme' });
       mockDb.user.findByPk.mockResolvedValue(user);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'dark' }, 'downloads.test'), res);
+      await updatePreferences(buildRequest({ mode: 'dark' }, 'downloads.test'), res);
 
-      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'dark' });
-      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ pack: 'testpack' }));
+      expect(user.update).toHaveBeenCalledWith({ preferredMode: 'dark' });
+      expect(res.send).toHaveBeenCalledWith(expect.objectContaining({ theme: 'testtheme' }));
     });
   });
 
@@ -539,7 +539,7 @@ describe('User Preferences', () => {
       mockFavoriteHelpers.extractOidcAccessToken.mockReturnValue(null);
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'dark' }), res);
+      await updatePreferences(buildRequest({ mode: 'dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.send).toHaveBeenCalledWith(
@@ -558,16 +558,16 @@ describe('User Preferences', () => {
       mockAxios.patch.mockResolvedValue({ status: 204 });
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'dark' }), res);
+      await updatePreferences(buildRequest({ mode: 'dark' }), res);
 
       expect(mockAxios.patch).toHaveBeenCalledWith(
         'https://idp.example.com/api/user/preferences',
-        { theme: 'dark' },
+        { mode: 'dark' },
         expect.objectContaining({
           headers: expect.objectContaining({ Authorization: 'Bearer oidc-token' }),
         })
       );
-      expect(user.update).toHaveBeenCalledWith({ preferredTheme: 'dark' });
+      expect(user.update).toHaveBeenCalledWith({ preferredMode: 'dark' });
     });
 
     it('should not mirror locally when the identity provider rejects the write', async () => {
@@ -577,7 +577,7 @@ describe('User Preferences', () => {
       mockAxios.patch.mockRejectedValue({ response: { status: 500 } });
       const res = buildResponse();
 
-      await updatePreferences(buildRequest({ theme: 'dark' }), res);
+      await updatePreferences(buildRequest({ mode: 'dark' }), res);
 
       expect(res.status).toHaveBeenCalledWith(502);
       expect(res.send).toHaveBeenCalledWith(

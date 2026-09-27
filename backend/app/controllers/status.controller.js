@@ -68,23 +68,23 @@ const enabledIdp = providers => {
   };
 };
 
-const packOf = site => {
-  const name = site?.brand?.pack;
+const themeOf = site => {
+  const name = site?.brand?.theme;
   return typeof name === 'string' && name.trim() !== ''
     ? { name, css: `/themes/${name}/${name}.css` }
     : null;
 };
 
 /**
- * The packs a person may choose on one hostname: its brand.packs list of
- * bare names in order, each with the stylesheet path built as pack.css is
+ * The themes a person may choose on one hostname: its brand.themes list of
+ * bare names in order, each with the stylesheet path built as theme.css is
  * and the name as its label; empty for a site without the key, which the
- * status leaves out so the UI offers every pack of its build
+ * status leaves out so the UI offers every theme of its build
  * @param {Object|null} site - The sites map entry
- * @returns {Array<{name: string, css: string, label: string}>} The offered packs
+ * @returns {Array<{name: string, css: string, label: string}>} The offered themes
  */
-const packsOf = site =>
-  (Array.isArray(site?.brand?.packs) ? site.brand.packs : [])
+const themesOf = site =>
+  (Array.isArray(site?.brand?.themes) ? site.brand.themes : [])
     .filter(name => typeof name === 'string' && name.trim() !== '')
     .map(name => ({ name, css: `/themes/${name}/${name}.css`, label: name }));
 
@@ -102,9 +102,8 @@ const faceOf = site => {
   if (!site) {
     return { brand: STATUS.brand, collections: STATUS.collections, links: STATUS.links };
   }
-  const theme = site.brand?.default_theme;
-  const pack = packOf(site);
-  const packs = packsOf(site);
+  const theme = themeOf(site);
+  const themes = themesOf(site);
   return {
     ...(site.organization ? { organization: site.organization } : {}),
     ...(site.sorts && Object.keys(site.sorts).length > 0 ? { sorts: site.sorts } : {}),
@@ -114,8 +113,7 @@ const faceOf = site => {
       name: site.brand?.name || STATUS.brand.name,
       logo_url: site.brand?.logo_url || STATUS.brand.logo_url,
       ...(theme ? { theme } : {}),
-      ...(pack ? { pack } : {}),
-      ...(packs.length > 0 ? { packs } : {}),
+      ...(themes.length > 0 ? { themes } : {}),
     },
     collections: site.collections?.length ? site.collections : STATUS.collections,
     links: {
@@ -147,7 +145,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its packs list included), collections, links (its community list included), features, organization, sorts and groups are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and none of organization, sorts or groups.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its theme and themes list included, never a mode), collections, links (its community list included), features, organization, sorts and groups are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and none of organization, sorts or groups.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -183,13 +181,8 @@ const featuresOf = (site, localEnabled) => {
  *                       description: The releases page the About page's Changelog button opens
  *                       example: https://github.com/Makr91/BoxVault/releases
  *                     theme:
- *                       type: string
- *                       description: The site's default variant, present when the hostname's sites entry names one
- *                       enum: [light, dark]
- *                       example: dark
- *                     pack:
  *                       type: object
- *                       description: The pack the page is stamped with, present when the hostname's sites entry names one
+ *                       description: The theme the page is stamped with, present when the hostname's sites entry names one; a host names no mode, the mode is the person's or the operating system's
  *                       required: [name, css]
  *                       properties:
  *                         name:
@@ -198,9 +191,9 @@ const featuresOf = (site, localEnabled) => {
  *                         css:
  *                           type: string
  *                           example: /themes/prominic/prominic.css
- *                     packs:
+ *                     themes:
  *                       type: array
- *                       description: The packs a person may choose on this hostname, in the order of its sites entry's brand.packs, present only while that list has entries; absent, the UI offers every pack of its own build, and an empty list offers none; a person's choice persists as the pack preference
+ *                       description: The themes a person may choose on this hostname, in the order of its sites entry's brand.themes, present only while that list has entries; absent, the UI offers every theme of its own build, and an empty list offers none; a person's choice persists as the theme preference
  *                       items:
  *                         type: object
  *                         required: [name, css, label]

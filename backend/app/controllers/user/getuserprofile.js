@@ -59,14 +59,15 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 preferred_language:
  *                   type: string
  *                   nullable: true
- *                 preferred_theme:
+ *                 preferred_mode:
  *                   type: string
  *                   nullable: true
  *                   enum: [light, dark, auto]
- *                 preferred_pack:
+ *                   description: The mode the person chose, copied from the identity provider's preferences.mode at sign-in for a federated account; null follows the operating system
+ *                 preferred_theme:
  *                   type: string
  *                   nullable: true
- *                   description: The bare pack name the person chose, copied from the identity provider's preferences.pack at sign-in for a federated account
+ *                   description: The bare theme name the person chose, copied from the identity provider's preferences.theme at sign-in for a federated account
  *                 preferred_motion:
  *                   type: string
  *                   nullable: true
@@ -185,8 +186,8 @@ export const getUserProfile = async (req, res) => {
       username: user.username,
       name: user.name || null,
       preferred_language: user.preferredLanguage || null,
+      preferred_mode: user.preferredMode || null,
       preferred_theme: user.preferredTheme || null,
-      preferred_pack: user.preferredPack || null,
       preferred_motion: user.preferredMotion || null,
       email: user.email,
       verified: user.verified,

@@ -165,19 +165,19 @@ const extractAddress = body => {
 };
 
 const PREFERENCE_VALUES = {
-  theme: ['light', 'dark', 'auto'],
+  mode: ['light', 'dark', 'auto'],
   motion: ['auto', 'reduce'],
 };
-const PACK_PATTERN = /^[a-z0-9-]+$/;
+const THEME_NAME_PATTERN = /^[a-z0-9-]+$/;
 const PREFERENCE_COLUMNS = {
+  mode: 'preferredMode',
   theme: 'preferredTheme',
-  pack: 'preferredPack',
   motion: 'preferredMotion',
 };
 
 /**
  * Extract the look preferences the urn:startcloud User extension carries as
- * `preferences` ({ theme, pack, motion }). The object's presence decides: absent,
+ * `preferences` ({ mode, theme, motion }). The object's presence decides: absent,
  * the provider does not speak these and the stored values stay; present, it is
  * the full desired state and a member absent or malformed clears its column.
  * @param {Object} extension - The urn:startcloud User extension payload
@@ -188,13 +188,13 @@ const extractPreferences = extension => {
   if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
     return {};
   }
-  const theme = PREFERENCE_VALUES.theme.includes(preferences.theme) ? preferences.theme : null;
+  const mode = PREFERENCE_VALUES.mode.includes(preferences.mode) ? preferences.mode : null;
   const motion = PREFERENCE_VALUES.motion.includes(preferences.motion) ? preferences.motion : null;
-  const pack =
-    typeof preferences.pack === 'string' && PACK_PATTERN.test(preferences.pack)
-      ? preferences.pack
+  const theme =
+    typeof preferences.theme === 'string' && THEME_NAME_PATTERN.test(preferences.theme)
+      ? preferences.theme
       : null;
-  return { preferredTheme: theme, preferredPack: pack, preferredMotion: motion };
+  return { preferredMode: mode, preferredTheme: theme, preferredMotion: motion };
 };
 
 const PROFILE_ATTRIBUTES = [
@@ -622,8 +622,8 @@ const findUsers = async (req, res) => {
  * success (RFC 7644 §3.5.1). Unknown ids are a 404 (the auth server recovers
  * via POST/GET); PUT never creates. Applies the pushed state: userName/email,
  * active (suspension), extension emailVerified, primaryOrgUuid (applied
- * only when that org is already mirrored locally) and preferences (theme,
- * pack and motion, full desired state while the object is present).
+ * only when that org is already mirrored locally) and preferences (mode,
+ * theme and motion, full desired state while the object is present).
  */
 const putUser = async (req, res) => {
   const userId = parseResourceId(req.params.id);

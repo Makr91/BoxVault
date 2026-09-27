@@ -497,22 +497,22 @@ const resolvePreferredLanguage = profile =>
 // OIDC Core §5.1 zoneinfo — the IANA name, omitted when the user has none.
 const resolveTimezone = profile => trimmedClaim(profile.zoneinfo);
 
-// Variant only. The brand pack belongs to the site, never to the user, so a
-// composed value like "nomadservices-dark" is not a preference and is refused.
-const THEME_PREFERENCES = ['light', 'dark', 'auto'];
+// The mode only: light, dark or auto. A composed value like
+// "nomadservices-dark" is not a mode and is refused.
+const MODE_PREFERENCES = ['light', 'dark', 'auto'];
+
+const resolvePreferredMode = profile => {
+  const candidate = profile.preferences?.mode;
+  return MODE_PREFERENCES.includes(candidate) ? candidate : null;
+};
+
+// A bare theme name the identity provider carries as preferences.theme; the
+// host decides at render time whether it offers that theme.
+const THEME_NAME_PATTERN = /^[a-z0-9-]+$/;
 
 const resolvePreferredTheme = profile => {
   const candidate = profile.preferences?.theme;
-  return THEME_PREFERENCES.includes(candidate) ? candidate : null;
-};
-
-// A bare pack name the identity provider carries as preferences.pack; the
-// host decides at render time whether it offers that pack.
-const PACK_PATTERN = /^[a-z0-9-]+$/;
-
-const resolvePreferredPack = profile => {
-  const candidate = profile.preferences?.pack;
-  return typeof candidate === 'string' && PACK_PATTERN.test(candidate) ? candidate : null;
+  return typeof candidate === 'string' && THEME_NAME_PATTERN.test(candidate) ? candidate : null;
 };
 
 const MOTION_PREFERENCES = ['auto', 'reduce'];
@@ -529,7 +529,7 @@ const resolvePreferredMotion = profile => {
  * profile carries no `preferences` object at all, which leaves the stored
  * look untouched.
  * @param {Object} profile - Token/userinfo claims
- * @returns {{preferredTheme: string|null, preferredPack: string|null, preferredMotion: string|null}|null}
+ * @returns {{preferredMode: string|null, preferredTheme: string|null, preferredMotion: string|null}|null}
  */
 const resolveLook = profile => {
   const { preferences } = profile;
@@ -537,8 +537,8 @@ const resolveLook = profile => {
     return null;
   }
   return {
+    preferredMode: resolvePreferredMode(profile),
     preferredTheme: resolvePreferredTheme(profile),
-    preferredPack: resolvePreferredPack(profile),
     preferredMotion: resolvePreferredMotion(profile),
   };
 };
@@ -578,8 +578,8 @@ const createNewExternalUser = async (
     username: profile.displayName || profile.cn || email.split('@')[0],
     name: resolveDisplayName(profile),
     preferredLanguage: resolvePreferredLanguage(profile),
+    preferredMode: resolvePreferredMode(profile),
     preferredTheme: resolvePreferredTheme(profile),
-    preferredPack: resolvePreferredPack(profile),
     preferredMotion: resolvePreferredMotion(profile),
     timezone: resolveTimezone(profile),
     email,

@@ -128,15 +128,15 @@ describe('Organization administration guards', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
         language: null,
+        mode: null,
         theme: null,
-        pack: null,
         motion: null,
         timezone: null,
       });
     });
 
-    it('should reject an invalid language, theme or timezone', async () => {
-      const cases = [{ language: 'x'.repeat(11) }, { theme: 'neon' }, { timezone: 'Mars/Olympus' }];
+    it('should reject an invalid language, mode or timezone', async () => {
+      const cases = [{ language: 'x'.repeat(11) }, { mode: 'neon' }, { timezone: 'Mars/Olympus' }];
       const responses = await Promise.all(cases.map(body => patch(signFor(memberA), body)));
       responses.forEach(res => {
         expect(res.statusCode).toBe(400);
@@ -146,14 +146,14 @@ describe('Organization administration guards', () => {
     it('should store valid preferences for a local account', async () => {
       const res = await patch(signFor(memberA), {
         language: 'en-US',
-        theme: 'dark',
+        mode: 'dark',
         timezone: 'UTC',
       });
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
         language: 'en-US',
-        theme: 'dark',
-        pack: null,
+        mode: 'dark',
+        theme: null,
         motion: null,
         timezone: 'UTC',
       });
@@ -161,7 +161,7 @@ describe('Organization administration guards', () => {
 
     it('should require an identity-provider session for a federated account', async () => {
       await ownerE.update({ authProvider: 'oidc' });
-      const res = await patch(signFor(ownerE), { theme: 'light' });
+      const res = await patch(signFor(ownerE), { mode: 'light' });
       expect(res.statusCode).toBe(400);
     });
   });

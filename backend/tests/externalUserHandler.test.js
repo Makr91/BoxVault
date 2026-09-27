@@ -201,7 +201,7 @@ describe('External user handling from identity-provider claims', () => {
       email_verified: true,
       name: 'Fresh Person',
       picture: 'https://cdn.example/fresh.png',
-      preferences: { language: 'es', theme: 'dark', pack: 'lcars', motion: 'reduce' },
+      preferences: { language: 'es', mode: 'dark', theme: 'lcars', motion: 'reduce' },
       zoneinfo: 'Europe/Berlin',
       organizations: [
         { uuid: `fresh-org-${uniqueId}`, name: 'Fresh Org', roles: ['admin'], primary: true },
@@ -219,8 +219,8 @@ describe('External user handling from identity-provider claims', () => {
       expect(created.name).toBe('Fresh Person');
       expect(created.avatar_url).toBe('https://cdn.example/fresh.png');
       expect(created.preferredLanguage).toBe('es');
-      expect(created.preferredTheme).toBe('dark');
-      expect(created.preferredPack).toBe('lcars');
+      expect(created.preferredMode).toBe('dark');
+      expect(created.preferredTheme).toBe('lcars');
       expect(created.preferredMotion).toBe('reduce');
       expect(created.timezone).toBe('Europe/Berlin');
       expect(created.authProvider).toBe('oidc');
@@ -238,7 +238,7 @@ describe('External user handling from identity-provider claims', () => {
           ...baseProfile,
           name: 'Fresher Person',
           picture: 'https://cdn.example/fresher.png',
-          preferences: { language: 'en', theme: 'light', pack: 'prominic', motion: 'auto' },
+          preferences: { language: 'en', mode: 'light', theme: 'prominic', motion: 'auto' },
           zoneinfo: 'America/Chicago',
         },
         db,
@@ -247,8 +247,8 @@ describe('External user handling from identity-provider claims', () => {
       expect(returning.name).toBe('Fresher Person');
       expect(returning.avatar_url).toBe('https://cdn.example/fresher.png');
       expect(returning.preferredLanguage).toBe('en');
-      expect(returning.preferredTheme).toBe('light');
-      expect(returning.preferredPack).toBe('prominic');
+      expect(returning.preferredMode).toBe('light');
+      expect(returning.preferredTheme).toBe('prominic');
       expect(returning.preferredMotion).toBe('auto');
       expect(returning.timezone).toBe('America/Chicago');
     });
@@ -266,23 +266,23 @@ describe('External user handling from identity-provider claims', () => {
     it('should apply the preferences object as full desired state, a malformed member clearing', async () => {
       const returning = await externalUserHandler.handleExternalUser(
         PROVIDER,
-        { ...baseProfile, preferences: { theme: 'dark', pack: 'Not A Pack', motion: 'none' } },
+        { ...baseProfile, preferences: { mode: 'dark', theme: 'Not A Theme', motion: 'none' } },
         db,
         authConfig
       );
-      expect(returning.preferredTheme).toBe('dark');
-      expect(returning.preferredPack).toBeNull();
+      expect(returning.preferredMode).toBe('dark');
+      expect(returning.preferredTheme).toBeNull();
       expect(returning.preferredMotion).toBeNull();
     });
 
     it('should clear the look when the identity provider carries nulls, and keep it when the object is absent', async () => {
       const set = await externalUserHandler.handleExternalUser(
         PROVIDER,
-        { ...baseProfile, preferences: { theme: 'dark', pack: 'lcars', motion: 'reduce' } },
+        { ...baseProfile, preferences: { mode: 'dark', theme: 'lcars', motion: 'reduce' } },
         db,
         authConfig
       );
-      expect(set.preferredPack).toBe('lcars');
+      expect(set.preferredTheme).toBe('lcars');
 
       const { preferences, ...withoutObject } = baseProfile;
       void preferences;
@@ -292,18 +292,18 @@ describe('External user handling from identity-provider claims', () => {
         db,
         authConfig
       );
-      expect(kept.preferredTheme).toBe('dark');
-      expect(kept.preferredPack).toBe('lcars');
+      expect(kept.preferredMode).toBe('dark');
+      expect(kept.preferredTheme).toBe('lcars');
       expect(kept.preferredMotion).toBe('reduce');
 
       const cleared = await externalUserHandler.handleExternalUser(
         PROVIDER,
-        { ...baseProfile, preferences: { theme: null, pack: null, motion: null } },
+        { ...baseProfile, preferences: { mode: null, theme: null, motion: null } },
         db,
         authConfig
       );
+      expect(cleared.preferredMode).toBeNull();
       expect(cleared.preferredTheme).toBeNull();
-      expect(cleared.preferredPack).toBeNull();
       expect(cleared.preferredMotion).toBeNull();
     });
 
@@ -407,14 +407,14 @@ describe('External user handling from identity-provider claims', () => {
           sub: `link-${uniqueId}`,
           email: user.email,
           email_verified: true,
-          preferences: { theme: 'neon' },
+          preferences: { mode: 'neon' },
         },
         db,
         authConfig
       );
       expect(linked.id).toBe(user.id);
       expect(linked.authProvider).toBe('oidc');
-      expect(linked.preferredTheme).toBeNull();
+      expect(linked.preferredMode).toBeNull();
       expect(await db.credential.count({ where: { user_id: user.id, provider: ISSUER } })).toBe(1);
     });
   });

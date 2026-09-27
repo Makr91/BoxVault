@@ -48,17 +48,17 @@ export default (sequelize, Sequelize) => {
         comment:
           'RFC 7643 locale: BCP 47 tag for formatting (dates, numbers). Distinct from preferredLanguage and only a fallback for it',
       },
-      preferredTheme: {
+      preferredMode: {
         type: Sequelize.STRING(10),
         allowNull: true,
         comment:
-          'Colour-scheme preference: light, dark, or auto. Variant only — the brand pack is a property of the site, never of the user. Null means unset and the browser-local choice applies',
-        field: 'preferred_theme',
+          'The mode: light, dark, or auto. Null means unset and the operating system scheme applies',
+        field: 'preferred_mode',
       },
-      preferredPack: {
+      preferredTheme: {
         type: Sequelize.STRING(64),
         allowNull: true,
-        field: 'preferred_pack',
+        field: 'preferred_theme',
       },
       preferredMotion: {
         type: Sequelize.STRING(10),

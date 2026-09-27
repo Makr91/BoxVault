@@ -69,17 +69,18 @@ describe('GET /api/status per Host', () => {
       logo_url: '/brand/test/mark.svg',
       repo: 'https://github.com/Makr91/BoxVault',
       changelog: 'https://github.com/Makr91/BoxVault/releases',
-      theme: 'dark',
-      pack: { name: 'testpack', css: '/themes/testpack/testpack.css' },
-      packs: [
-        { name: 'testpack', css: '/themes/testpack/testpack.css', label: 'testpack' },
-        { name: 'otherpack', css: '/themes/otherpack/otherpack.css', label: 'otherpack' },
+      theme: { name: 'testtheme', css: '/themes/testtheme/testtheme.css' },
+      themes: [
+        { name: 'testtheme', css: '/themes/testtheme/testtheme.css', label: 'testtheme' },
+        { name: 'othertheme', css: '/themes/othertheme/othertheme.css', label: 'othertheme' },
       ],
     });
-    expect(plain.body.brand).not.toHaveProperty('packs');
+    expect(plain.body.brand).not.toHaveProperty('themes');
+    expect(plain.body.brand).not.toHaveProperty('theme');
+    expect(plain.body.brand).not.toHaveProperty('mode');
     const bare = await request(app).get('/api/status').set('Host', 'bare.test');
     expect(bare.body.brand.name).toBe('Bare');
-    expect(bare.body.brand).not.toHaveProperty('packs');
+    expect(bare.body.brand).not.toHaveProperty('themes');
     expect(res.body.links).toEqual({
       docs: 'https://docs.test',
       contact: 'help@test',

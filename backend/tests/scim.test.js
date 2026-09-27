@@ -312,7 +312,7 @@ describe('SCIM receiver', () => {
       expect(res.body[USER_EXTENSION]).toEqual({
         emailVerified: true,
         primaryOrgUuid: null,
-        preferences: { theme: null, pack: null, motion: null },
+        preferences: { mode: null, theme: null, motion: null },
       });
       expect(res.body.meta.resourceType).toBe('User');
       expect(res.body.meta.location).toMatch(/\/scim\/v2\/Users\/\d+$/);

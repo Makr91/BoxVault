@@ -65,9 +65,8 @@ const appConfig = {
       brand: {
         name: 'Test Downloads',
         logo_url: '/brand/test/mark.svg',
-        default_theme: 'dark',
-        pack: 'testpack',
-        packs: ['testpack', 'otherpack'],
+        theme: 'testtheme',
+        themes: ['testtheme', 'othertheme'],
       },
       collections: ['downloads'],
       sorts: { downloads: { providers: [{ column: 'name', direction: 'desc' }] } },
@@ -94,7 +93,7 @@ const appConfig = {
       origin: 'https://face.test',
     },
     'bare.test': {
-      brand: { name: 'Bare', packs: [] },
+      brand: { name: 'Bare', themes: [] },
       collections: ['downloads'],
     },
   },
