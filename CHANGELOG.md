@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.104.2](https://github.com/Makr91/BoxVault/compare/v0.104.1...v0.104.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* the page follows the operating system and a cleared look clears at sign-in ([52233d0](https://github.com/Makr91/BoxVault/commit/52233d04575e749de8b31685e74d8fd530e51b02))
+
 ## [0.104.1](https://github.com/Makr91/BoxVault/compare/v0.104.0...v0.104.1) (2026-09-27)
 
 
