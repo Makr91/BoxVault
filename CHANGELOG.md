@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.105.0](https://github.com/Makr91/BoxVault/compare/v0.104.2...v0.105.0) (2026-09-27)
+
+
+### Features
+
+* the theme is the look and the mode is light, dark or the operating system's ([2206112](https://github.com/Makr91/BoxVault/commit/2206112fa903c39951b02d1d0002a5d46a48a682))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.52.0 ([18b4fa3](https://github.com/Makr91/BoxVault/commit/18b4fa374fa6ee5102f6cfebf185d188f093404c))
+* bump startcloud-ui to v0.52.0 ([a995721](https://github.com/Makr91/BoxVault/commit/a995721d8f892f151c99ff0233e8f1b167fa8257))
+
 ## [0.104.2](https://github.com/Makr91/BoxVault/compare/v0.104.1...v0.104.2) (2026-09-27)
 
 
