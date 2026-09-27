@@ -2,6 +2,7 @@
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js'; // Keep this for Sequelize
+import { containing } from '../../utils/like.js';
 const { organization: Organization, user: User, box: Box, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -54,7 +55,7 @@ export const findAll = async (req, res) => {
   const { userId } = req;
 
   try {
-    const condition = organization ? { name: { [Op.like]: `%${organization}%` } } : null;
+    const condition = organization ? { name: { [Op.like]: containing(organization) } } : null;
     const organizations = await Organization.findAll({
       where: condition,
       include: [

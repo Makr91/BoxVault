@@ -40,6 +40,7 @@ import {
 } from './app/middleware/index.js';
 import { rateLimiter, spaLimiter, throttled } from './app/middleware/rateLimiter.js';
 import db, { initializeDatabase } from './app/models/index.js';
+import { upgradeSchema } from './app/models/schema.js';
 import statusRoutes from './app/routes/status.routes.js';
 import rulesRoutes from './app/routes/rules.routes.js';
 import healthRoutes from './app/routes/health.routes.js';
@@ -426,8 +427,8 @@ const initializeApp = async () => {
     );
 
     if (runsAsMain) {
-      await db.sequelize.sync();
-      log.app.info('Database synced');
+      const changed = await upgradeSchema(db.sequelize);
+      log.app.info('Database synced', changed);
     }
 
     // Sync session store

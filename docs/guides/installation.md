@@ -82,7 +82,7 @@ There is no `ExecReload`; a configuration change that the schema marks `requires
 
 ### Upgrade
 
-Install the new `.deb` the same way. `postinst` detects the upgrade, runs `scripts/migrate-config.js` as the `boxvault` user against `/etc/boxvault/` (each file is moved to its schema's version, only the keys a migration changes are rewritten, the previous copy kept as `.bak`), preserves the database, then asks for `systemctl restart boxvault`.
+Install the new `.deb` the same way. `postinst` detects the upgrade, runs `scripts/migrate-config.js` as the `boxvault` user against `/etc/boxvault/` (each file is moved to its schema's version, only the keys a migration changes are rewritten, the previous copy kept as `.bak`), leaves the database to the service, which upgrades its own schema at the next start, then asks for `systemctl restart boxvault`.
 
 ### Remove
 
@@ -143,7 +143,7 @@ sudo mysql -e "GRANT ALL PRIVILEGES ON boxvault.* TO 'boxvault'@'localhost';"
 sudo mysql -e "FLUSH PRIVILEGES;"
 ```
 
-BoxVault synchronises its schema at boot; there is no migration command to run.
+BoxVault brings its schema up to date at every start, the same way on both databases, and there is no migration command to run: a column a release renamed is renamed with its values, every missing table, column and index is added, and nothing is ever removed or changed in place. The two databases then behave alike: SQLite's text columns are rebuilt once to compare without regard to letter case, the way MariaDB's collation does, a copy of the database file kept beside it as `.bak` first, and MariaDB's ENUM columns are widened to every value a release added. A SQLite database holding two rows that differ only by case under a unique column is left as it was and the start logs which column refused.
 
 ## Monitoring
 

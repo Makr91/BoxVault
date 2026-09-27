@@ -6,6 +6,7 @@ import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { snakeKeys } from '../../utils/wire.js';
 import { withinReach } from '../../utils/orgMembership.js';
+import { startingWith } from '../../utils/like.js';
 const {
   download: Download,
   downloadReleases: DownloadRelease,
@@ -402,14 +403,17 @@ const relinkTo = async original => {
 /**
  * After a directory rename, move the storagePath of every row under the old
  * prefix to the new one and point the links at the moved originals again.
+ * The prefix is matched literally and letter for letter, the way the
+ * filesystem names the directory, whatever the database folds.
  * @param {string} oldPrefix - The old relative directory path
  * @param {string} newPrefix - The new relative directory path
  * @returns {Promise<void>}
  */
 const renameStoragePaths = async (oldPrefix, newPrefix) => {
-  const rows = await DownloadFile.findAll({
-    where: { storagePath: { [Op.like]: `${oldPrefix}/%` } },
+  const found = await DownloadFile.findAll({
+    where: { storagePath: { [Op.like]: startingWith(`${oldPrefix}/`) } },
   });
+  const rows = found.filter(row => row.storagePath.startsWith(`${oldPrefix}/`));
   await Promise.all(
     rows.map(row =>
       row.update({ storagePath: `${newPrefix}${row.storagePath.slice(oldPrefix.length)}` })

@@ -148,6 +148,7 @@ fs.writeFileSync(mailConfigPath, yaml.dump(mailConfig));
 
 // Require models AFTER configs are written to avoid "undefined" errors
 const { default: db } = await import('../app/models/index.js');
+const { alignBackend } = await import('../app/models/schema.js');
 
 // Global setup - runs once before all tests
 beforeAll(async () => {
@@ -160,6 +161,7 @@ beforeAll(async () => {
   // Initialize test database
   try {
     await db.sequelize.sync({ force: true }); // Clear and recreate tables
+    await alignBackend(db.sequelize);
 
     // Create Sessions table for connect-session-sequelize
     // This table is required for session persistence but isn't a defined model

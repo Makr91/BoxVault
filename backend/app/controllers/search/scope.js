@@ -2,8 +2,9 @@ import db from '../../models/index.js';
 import { isoWhereFor, resolveIsoViewer } from '../iso/visibility.js';
 import { downloadWhereFor } from '../download/visibility.js';
 import { uploaderOrgIds } from '../../utils/orgMembership.js';
+import { containing, startingWith } from '../../utils/like.js';
 
-const { user: User, role: Role, Sequelize, sequelize } = db;
+const { user: User, role: Role, Sequelize } = db;
 const { Op } = Sequelize;
 
 const KINDS = ['organization', 'item', 'version', 'provider', 'architecture', 'artifact', 'user'];
@@ -25,16 +26,6 @@ const DEFAULT_LIMIT = 5;
 const MAX_LIMIT = 50;
 const MIN_QUERY_LENGTH = 2;
 const MIN_CHECKSUM_LENGTH = 6;
-
-/**
- * Escape the LIKE wildcards of a search term. SQLite has no default escape
- * character, so the term is passed through there and the JavaScript matcher
- * drops the wildcard false positives.
- * @param {string} term - The trimmed search term
- * @returns {string} The term safe to embed in a LIKE pattern
- */
-const escapeTerm = term =>
-  sequelize.getDialect() === 'sqlite' ? term : term.replace(/[\\%_]/g, '\\$&');
 
 /**
  * Parse the per-kind limit: default 5, at most 50.
@@ -67,7 +58,7 @@ const parseKinds = value => {
 /**
  * One LIKE clause per column.
  * @param {string[]} columns - Attribute names of the main model
- * @param {string} pattern - The LIKE pattern
+ * @param {Object} pattern - The LIKE value, from utils/like.js
  * @returns {Object[]} Clauses to place under Op.or
  */
 const likeClauses = (columns, pattern) =>
@@ -94,14 +85,15 @@ const spellingsOf = word => {
 
 /**
  * The tokens of a search term: every word with its spellings and the LIKE
- * patterns of those spellings.
+ * values of those spellings, each matching the spelling literally on every
+ * database.
  * @param {string} term - The trimmed search term
- * @returns {Array<{spellings: string[], patterns: string[]}>} One token per word
+ * @returns {Array<{spellings: string[], patterns: Object[]}>} One token per word
  */
 const tokensOf = term =>
   wordsOf(term).map(word => {
     const spellings = spellingsOf(word);
-    return { spellings, patterns: spellings.map(spelling => `%${escapeTerm(spelling)}%`) };
+    return { spellings, patterns: spellings.map(spelling => containing(spelling)) };
   });
 
 /**
@@ -109,7 +101,7 @@ const tokensOf = term =>
  * of the columns under one of its spellings; `extra` adds clauses per
  * pattern beyond the columns, the metadata column read as text for one.
  * @param {string[]} columns - Attribute names, `$include.column$` names included
- * @param {Array<{patterns: string[]}>} tokens - From tokensOf
+ * @param {Array<{patterns: Object[]}>} tokens - From tokensOf
  * @param {Function} [extra] - Pattern to extra clauses
  * @returns {Object} The where clause
  */
@@ -143,7 +135,7 @@ const matchedChain = (entries, tokens) => {
 /**
  * A LIKE clause over the JSON metadata column read as text.
  * @param {string} alias - The main model alias in the query
- * @param {string} pattern - The LIKE pattern
+ * @param {Object} pattern - The LIKE value, from utils/like.js
  * @returns {Object} The clause to place under Op.or
  */
 const metadataLike = (alias, pattern) =>
@@ -267,11 +259,10 @@ const buildContext = async (req, term, kinds) => {
   const viewer = await resolveIsoViewer(req);
   const isAdmin = await isGlobalAdmin(viewer);
   const managed = kinds.includes('user') && !isAdmin && viewer ? viewer.managedOrgIds : [];
-  const escaped = escapeTerm(term);
   return {
     term,
     tokens: tokensOf(term),
-    prefix: `${escaped}%`,
+    prefix: startingWith(term),
     viewer,
     isAdmin,
     managedOrgIds: managed,

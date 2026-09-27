@@ -167,7 +167,7 @@ const patchInclude = downloadWhere => ({
  * The where clause of a file finder: the token search over the chain, or a
  * checksum prefix when the term is one word long enough to be one.
  * @param {string[]} columns - The chain columns
- * @param {{tokens: Object[], term: string, prefix: string}} context - The search context
+ * @param {{tokens: Object[], term: string, prefix: Object}} context - The search context
  * @returns {Object} The where clause
  */
 const fileWhere = (columns, { tokens, term, prefix }) => {
