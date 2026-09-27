@@ -32,7 +32,10 @@ const verifyToken = async (req, res, next) => {
     }
 
     const refreshRoute = req.path.endsWith('/auth/refresh-token');
-    const auth = await resolveRequestAuth(req, { sessionOnly: refreshRoute });
+    const auth = await resolveRequestAuth(req, {
+      sessionOnly: refreshRoute,
+      allowLapsedOidc: refreshRoute,
+    });
 
     if (!auth) {
       log.error.error('Request authentication failed', { path: req.path });
@@ -43,6 +46,7 @@ const verifyToken = async (req, res, next) => {
     req.isServiceAccount = auth.isServiceAccount;
     req.stayLoggedIn = auth.stayLoggedIn;
     req.tokenClaims = auth.claims;
+    req.lapsedSession = auth.lapsed === true;
     if (auth.provider) {
       req.authProvider = auth.provider;
     }

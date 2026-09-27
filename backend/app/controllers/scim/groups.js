@@ -5,6 +5,7 @@
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { upsertExternalOrg } from '../../utils/externalOrgs.js';
+import { notifyProfilesUpdated } from '../../utils/events.js';
 import {
   SCIM_GROUP_EXTENSION,
   SCIM_GROUP_SCHEMA,
@@ -180,9 +181,10 @@ const createGroup = async (req, res) => {
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
-    await recomputeOrgMemberships(db, org, parsed.orgUuid, transaction);
+    const changed = await recomputeOrgMemberships(db, org, parsed.orgUuid, transaction);
 
     await transaction.commit();
+    notifyProfilesUpdated(changed);
 
     log.auth.info('SCIM: group created', {
       groupId: row.id,
@@ -285,9 +287,10 @@ const putGroup = async (req, res) => {
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
-    await recomputeOrgMemberships(db, org, row.org_uuid, transaction);
+    const changed = await recomputeOrgMemberships(db, org, row.org_uuid, transaction);
 
     await transaction.commit();
+    notifyProfilesUpdated(changed);
 
     log.auth.info('SCIM: group updated', {
       groupId: row.id,
@@ -333,11 +336,14 @@ const deleteGroup = async (req, res) => {
     const org = await Organization.findOne({ where: { external_org_id: orgUuid }, transaction });
 
     let postCommitCleanup = null;
+    let changed = [];
     if (org) {
       if (remaining === 0) {
-        postCommitCleanup = await destroyMirrorOrg(org, transaction);
+        const destroyed = await destroyMirrorOrg(db, org, transaction);
+        postCommitCleanup = destroyed.cleanup;
+        changed = destroyed.memberIds;
       } else {
-        await recomputeOrgMemberships(db, org, orgUuid, transaction);
+        changed = await recomputeOrgMemberships(db, org, orgUuid, transaction);
       }
     }
 
@@ -345,6 +351,7 @@ const deleteGroup = async (req, res) => {
     if (postCommitCleanup) {
       postCommitCleanup();
     }
+    notifyProfilesUpdated(changed);
 
     log.auth.info('SCIM: group deleted', {
       groupId,

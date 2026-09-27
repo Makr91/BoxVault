@@ -483,6 +483,7 @@ const applyPrimaryOrgPointer = async (user, primaryOrgUuid, patch) => {
   const membership = await UserOrg.findUserOrgRole(user.id, primaryOrg.id);
   if (membership && !membership.is_primary) {
     await UserOrg.setPrimaryOrganization(user.id, primaryOrg.id);
+    notifyProfileUpdated(user.id);
   }
 };
 

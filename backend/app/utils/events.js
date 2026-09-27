@@ -26,6 +26,8 @@ const nextId = () => {
 
 const floorId = nextId();
 
+const newestId = () => `${lastMs}-${seq}`;
+
 const parseId = id => {
   const [ms, sequence] = String(id).split('-');
   return [Number(ms), Number(sequence)];
@@ -83,7 +85,11 @@ const replay = (subscriber, lastEventId) => {
   if (!lastEventId) {
     return;
   }
-  if (!isValidId(lastEventId) || compareIds(lastEventId, oldestId()) < 0) {
+  if (
+    !isValidId(lastEventId) ||
+    compareIds(lastEventId, oldestId()) < 0 ||
+    compareIds(lastEventId, newestId()) > 0
+  ) {
     write(subscriber, frame(nextId(), 'reset', { topics: [...subscriber.topics] }));
     return;
   }
@@ -98,7 +104,8 @@ const replay = (subscriber, lastEventId) => {
  * Answer GET /api/events for a signed-in caller: the stream headers, the
  * retry hint and the ready frame naming the subscribed topics, a replay of
  * everything after Last-Event-ID when it is still in the ring or a reset when
- * it is not, then live events and a heartbeat comment while idle.
+ * it is not, an id this process never issued included, then live events and
+ * a heartbeat comment while idle.
  * @param {import('express').Request} req - The request, with userId resolved
  * @param {import('express').Response} res - The response kept open as the stream
  */
@@ -182,6 +189,17 @@ const notifyProfileUpdated = userId => {
 };
 
 /**
+ * Push profile-updated to every person in a list, once each, so a change to
+ * an organization or its memberships reaches every member's open tab.
+ * @param {Array<number>} userIds - The users whose profiles changed
+ */
+const notifyProfilesUpdated = userIds => {
+  for (const userId of new Set(userIds)) {
+    notifyProfileUpdated(userId);
+  }
+};
+
+/**
  * Push the health state to every stream subscribed to the health topic.
  * @param {{ status: string, timestamp: string, services: Object }} health - The /api/health shape
  */
@@ -196,5 +214,6 @@ export {
   notifySessionTerminated,
   notifyUnreadCount,
   notifyProfileUpdated,
+  notifyProfilesUpdated,
   notifyHealth,
 };

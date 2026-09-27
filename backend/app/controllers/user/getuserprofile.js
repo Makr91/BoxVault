@@ -1,11 +1,8 @@
 // getuserprofile.js
-import { loadConfig } from '../../utils/config-loader.js';
 import { resolveUserOrganizations } from '../../utils/userOrgs.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
-import { buildSigninToken } from '../auth/signin.js';
-import { idpClaimsOf } from '../auth/token.js';
 import { profileOf } from '../../utils/profile.js';
 const { user: User, role: Role, organization: Organization } = db;
 
@@ -14,13 +11,30 @@ const { user: User, role: Role, organization: Organization } = db;
  * /api/user:
  *   get:
  *     summary: Get current user profile
- *     description: Retrieve the profile information of the currently authenticated user
+ *     description: Retrieve the profile information of the currently authenticated user. The answer carries no credential; the session renews through POST /api/auth/refresh-token. It is sent with Cache-Control no-store and an ETag of the body, and a request whose If-None-Match names that tag is answered 304 with no body.
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: If-None-Match
+ *         schema:
+ *           type: string
+ *         description: The ETag of the profile last read; a match answers 304
  *     responses:
+ *       304:
+ *         description: The profile is unchanged since the ETag named
  *       200:
  *         description: User profile retrieved successfully
+ *         headers:
+ *           ETag:
+ *             schema:
+ *               type: string
+ *             description: The tag of this body, to send back as If-None-Match
+ *           Cache-Control:
+ *             schema:
+ *               type: string
+ *             example: no-store
  *         content:
  *           application/json:
  *             schema:
@@ -66,9 +80,6 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 organization:
  *                   type: string
  *                   description: Organization name
- *                 access_token:
- *                   type: string
- *                   description: JWT access token
  *                 avatar_url:
  *                   type: string
  *                   nullable: true
@@ -139,8 +150,6 @@ const { user: User, role: Role, organization: Organization } = db;
  */
 export const getUserProfile = async (req, res) => {
   try {
-    const authConfig = loadConfig('auth');
-
     const user = await User.findByPk(req.userId, {
       include: [
         {
@@ -155,6 +164,7 @@ export const getUserProfile = async (req, res) => {
           attributes: ['name'],
         },
       ],
+      order: [[{ model: Role, as: 'roles' }, 'id', 'ASC']],
     });
 
     if (!user) {
@@ -166,19 +176,10 @@ export const getUserProfile = async (req, res) => {
     }
 
     const { userOrganizations: organizations } = await resolveUserOrganizations(user);
-    const claims = req.tokenClaims || {};
-    const token = buildSigninToken({
-      user,
-      isServiceAccount: false,
-      stayLoggedIn: req.stayLoggedIn,
-      provider: claims.provider || user.authProvider || 'local',
-      userOrganizations: organizations,
-      authConfig,
-      idpClaims: idpClaimsOf(claims),
-    });
 
     const authorities = user.roles.map(role => `ROLE_${role.name.toUpperCase()}`);
 
+    res.set('Cache-Control', 'no-store');
     return res.status(200).send({
       id: user.id,
       username: user.username,
@@ -196,7 +197,6 @@ export const getUserProfile = async (req, res) => {
       organization: user.primaryOrganization ? user.primaryOrganization.name : null,
       organizations,
       entitlements: user.entitlements || [],
-      access_token: token,
     });
   } catch (error) {
     log.error.error('Error retrieving user profile:', error);

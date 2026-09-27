@@ -5,9 +5,12 @@ import { getJwtClaimOptions } from '../utils/auth.js';
 import { problem } from '../utils/problem.js';
 import { isGrantRefused, refreshOidcSession, adoptRefreshedSession } from '../utils/oidcRefresh.js';
 
-const verifiedClaims = token => {
+const verifiedClaims = (token, lapsed) => {
   try {
-    return jwt.verify(token, loadConfig('auth').auth.jwt.jwt_secret, getJwtClaimOptions());
+    return jwt.verify(token, loadConfig('auth').auth.jwt.jwt_secret, {
+      ...getJwtClaimOptions(),
+      ...(lapsed ? { ignoreExpiration: true } : {}),
+    });
   } catch (error) {
     log.auth.debug('JWT verification failed in refresh middleware', { error: error.message });
     return null;
@@ -34,7 +37,10 @@ const needsRefresh = claims => {
  * endpoint refuses with `invalid_grant` ends the session with 401 (RFC 6749
  * §5.2); any other failure logs and lets the request continue on the tokens
  * it already carries, the way RFC 6749 §5.2 and RFC 9110 §15.6 describe
- * client-request and server faults.
+ * client-request and server faults. A session the gate admitted as lapsed
+ * (its own JWT past `exp`, the refresh route alone) is refreshed whatever the
+ * provider's expiry says, and nothing is minted unless the provider answers:
+ * a refused grant is 401 and any other failure 502.
  * @param {import('express').Request} req - The request
  * @param {import('express').Response} res - The response
  * @param {import('express').NextFunction} next - The next handler
@@ -45,11 +51,12 @@ const oidcTokenRefresh = async (req, res, next) => {
   if (!token) {
     return next();
   }
-  const claims = verifiedClaims(token);
-  if (!claims?.provider?.startsWith('oidc-') || !needsRefresh(claims)) {
+  const lapsed = req.lapsedSession === true;
+  const claims = verifiedClaims(token, lapsed);
+  if (!claims?.provider?.startsWith('oidc-') || (!lapsed && !needsRefresh(claims))) {
     return next();
   }
-  log.auth.info('OIDC token expiring soon, attempting refresh', {
+  log.auth.info(lapsed ? 'Lapsed OIDC session, refreshing' : 'OIDC token expiring soon', {
     userId: claims.id,
     provider: claims.provider,
     isExpired: claims.oidc_expires_at < Date.now(),
@@ -73,6 +80,9 @@ const oidcTokenRefresh = async (req, res, next) => {
     });
     if (isGrantRefused(error)) {
       return problem(res, req, { status: 401, type: 'authentication' });
+    }
+    if (lapsed) {
+      return problem(res, req, { status: 502, type: 'bad-gateway' });
     }
     return next();
   }

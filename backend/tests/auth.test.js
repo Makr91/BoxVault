@@ -657,6 +657,98 @@ describe('Authentication API', () => {
       }
     });
 
+    it('should renew a lapsed OIDC session from its refresh token on the refresh route alone', async () => {
+      const lapsedUser = await db.user.create({
+        username: `oidc-lapsed-${uniqueId}`,
+        email: `oidc-lapsed-${uniqueId}@example.com`,
+        authProvider: 'oidc-testprovider',
+        verified: true,
+      });
+      const role = await db.role.findOne({ where: { name: 'user' } });
+      await lapsedUser.setRoles([role]);
+      const lapsedJwt = jwt.sign(
+        {
+          id: lapsedUser.id,
+          provider: 'oidc-testprovider',
+          oidc_expires_at: Date.now() + 60 * 60 * 1000,
+          oidc_refresh_token: 'still-good-refresh-token',
+          iat: Math.floor(Date.now() / 1000) - 7200,
+          exp: Math.floor(Date.now() / 1000) - 3600,
+        },
+        'test-secret',
+        TEST_JWT_CLAIMS
+      );
+
+      const restore = await updateConfig('auth', config => {
+        config.auth.oidc = config.auth.oidc || {};
+        config.auth.oidc.providers = {
+          testprovider: {
+            enabled: true,
+            issuer: 'https://oidc.example.com',
+            client_id: 'client-id',
+            client_secret: 'client-secret',
+          },
+        };
+        return config;
+      });
+
+      try {
+        await initializeStrategies();
+        mockOpenIdClient.discovery.mockResolvedValue({
+          serverMetadata: () => ({ token_endpoint: 'https://oidc.example.com/token' }),
+          clientId: 'client-id',
+        });
+
+        const elsewhere = await request(app).get('/api/user').set('x-access-token', lapsedJwt);
+        expect(elsewhere.statusCode).toBe(401);
+
+        mockAxios.post.mockResolvedValueOnce({
+          data: { access_token: 'renewed-access', expires_in: 3600, refresh_token: 'next' },
+        });
+        const renewed = await request(app)
+          .post('/api/auth/refresh-token')
+          .set('x-access-token', lapsedJwt);
+        expect(renewed.statusCode).toBe(200);
+        expect(mockAxios.post).toHaveBeenCalled();
+        const minted = jwt.decode(renewed.body.access_token);
+        expect(minted.oidc_access_token).toBe('renewed-access');
+        expect(minted.oidc_refresh_token).toBe('next');
+        expect(minted.exp * 1000).toBeGreaterThan(Date.now());
+
+        mockAxios.post.mockRejectedValueOnce({
+          response: { status: 400, data: { error: 'invalid_grant' } },
+        });
+        const refused = await request(app)
+          .post('/api/auth/refresh-token')
+          .set('x-access-token', lapsedJwt);
+        expect(refused.statusCode).toBe(401);
+
+        mockAxios.post.mockRejectedValueOnce({ response: { status: 503, data: {} } });
+        const down = await request(app)
+          .post('/api/auth/refresh-token')
+          .set('x-access-token', lapsedJwt);
+        expect(down.statusCode).toBe(502);
+
+        const localLapsed = jwt.sign(
+          {
+            id: lapsedUser.id,
+            provider: 'local',
+            iat: Math.floor(Date.now() / 1000) - 7200,
+            exp: Math.floor(Date.now() / 1000) - 3600,
+          },
+          'test-secret',
+          TEST_JWT_CLAIMS
+        );
+        const local = await request(app)
+          .post('/api/auth/refresh-token')
+          .set('x-access-token', localLapsed);
+        expect(local.statusCode).toBe(401);
+      } finally {
+        await restore();
+        await lapsedUser.destroy();
+      }
+    });
+
     it('should skip OIDC refresh if token is valid for long enough', async () => {
       const future = Date.now() + 60 * 60 * 1000; // 1 hour from now
       const oidcJwt = jwt.sign(

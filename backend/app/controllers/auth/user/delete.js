@@ -75,25 +75,25 @@ export const deleteUser = async (req, res) => {
       include: [{ model: db.organization, as: 'organization', attributes: ['id', 'name'] }],
     });
 
-    for (const ownerMembership of ownerMemberships) {
-      const orgId = ownerMembership.organization_id;
-      // eslint-disable-next-line no-await-in-loop -- sequential per-org guard checks
-      const ownerCount = await UserOrg.count({
-        where: { organization_id: orgId, role: 'owner' },
+    const soleOwnerships = await Promise.all(
+      ownerMemberships.map(async ownerMembership => {
+        const orgId = ownerMembership.organization_id;
+        const [ownerCount, memberCount] = await Promise.all([
+          UserOrg.count({ where: { organization_id: orgId, role: 'owner' } }),
+          UserOrg.count({ where: { organization_id: orgId } }),
+        ]);
+        return ownerCount === 1 && memberCount > 1 ? ownerMembership : null;
+      })
+    );
+    const blocking = soleOwnerships.find(Boolean);
+    if (blocking) {
+      return problem(res, req, {
+        status: 400,
+        type: 'bad-request',
+        title: req.__('users.cannotDeleteSoleOwner', {
+          organization: blocking.organization?.name || String(blocking.organization_id),
+        }),
       });
-      if (ownerCount === 1) {
-        // eslint-disable-next-line no-await-in-loop
-        const memberCount = await UserOrg.count({ where: { organization_id: orgId } });
-        if (memberCount > 1) {
-          return problem(res, req, {
-            status: 400,
-            type: 'bad-request',
-            title: req.__('users.cannotDeleteSoleOwner', {
-              organization: ownerMembership.organization?.name || String(orgId),
-            }),
-          });
-        }
-      }
     }
 
     await user.destroy();

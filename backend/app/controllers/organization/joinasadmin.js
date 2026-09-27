@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { organization: Organization, UserOrg } = db;
 
 /**
@@ -70,6 +71,7 @@ export const joinAsAdmin = async (req, res) => {
       role: 'owner',
       is_primary: false,
     });
+    notifyProfileUpdated(userId);
 
     log.api.info('Global admin joined organization as owner', {
       userId,

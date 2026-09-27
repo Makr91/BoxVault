@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { user: User, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -95,6 +96,7 @@ export const changeEmail = async (req, res) => {
     user.email = newEmail;
     user.emailHash = generateEmailHash(newEmail);
     await user.save();
+    notifyProfileUpdated(user.id);
 
     return res.status(200).send({ message: req.__('users.emailChanged') });
   } catch (err) {

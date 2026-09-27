@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { organization: Organization, Sequelize, UserOrg } = db;
 
 const badRequest = (req, res, key) =>
@@ -111,6 +112,7 @@ const leaveOrganization = async (req, res) => {
 
     // Remove user from organization
     await membership.destroy();
+    notifyProfileUpdated(userId);
 
     log.api.info('User left organization', {
       userId,

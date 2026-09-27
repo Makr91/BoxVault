@@ -1,6 +1,7 @@
 import { log } from '../utils/Logger.js';
 import { generateEmailHash, generateOrgCode, isHttpUrl } from '../utils/identity.js';
 import { findFreeOrgName, upsertExternalOrg } from '../utils/externalOrgs.js';
+import { notifyProfileUpdated } from '../utils/events.js';
 
 /**
  * Pick the per-org role from an auth-server organizations claim entry. The
@@ -81,18 +82,13 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
   try {
     const seenOrgIds = [];
     let primaryOrgId = null;
+    let changed = false;
 
-    for (const claimOrg of profile.organizations) {
-      if (!claimOrg?.uuid) {
-        continue;
-      }
-
-      // eslint-disable-next-line no-await-in-loop -- memberships upserted sequentially in one txn
+    const mirrorClaimOrg = async claimOrg => {
       const org = await upsertClaimOrg(db, issuer, claimOrg, transaction);
       const role = pickOrgRole(claimOrg.roles);
       const isPrimary = !!claimOrg.primary;
 
-      // eslint-disable-next-line no-await-in-loop
       const membership = await UserOrg.findOne({
         where: { user_id: user.id, organization_id: org.id },
         transaction,
@@ -100,11 +96,10 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
 
       if (membership) {
         if (membership.role !== role || membership.is_primary !== isPrimary) {
-          // eslint-disable-next-line no-await-in-loop
           await membership.update({ role, is_primary: isPrimary }, { transaction });
+          changed = true;
         }
       } else {
-        // eslint-disable-next-line no-await-in-loop
         await UserOrg.create(
           {
             user_id: user.id,
@@ -114,13 +109,18 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
           },
           { transaction }
         );
+        changed = true;
       }
 
       seenOrgIds.push(org.id);
       if (isPrimary) {
         primaryOrgId = org.id;
       }
-    }
+    };
+
+    await profile.organizations
+      .filter(claimOrg => claimOrg?.uuid)
+      .reduce((chain, claimOrg) => chain.then(() => mirrorClaimOrg(claimOrg)), Promise.resolve());
 
     // Exact mirror: drop memberships in every external org not in the claim.
     const externalOrgs = await Organization.findAll({
@@ -132,13 +132,14 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
     const staleOrgIds = externalOrgIds.filter(id => !seenOrgIds.includes(id));
 
     if (staleOrgIds.length) {
-      await UserOrg.destroy({
+      const dropped = await UserOrg.destroy({
         where: {
           user_id: user.id,
           organization_id: { [db.Sequelize.Op.in]: staleOrgIds },
         },
         transaction,
       });
+      changed = changed || dropped > 0;
 
       // The pointer survives the membership it names unless it is cleared here,
       // and a dangling one is worse than none: it is published as the user's
@@ -155,9 +156,13 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
       !user.primary_organization_id || externalOrgIds.includes(user.primary_organization_id);
     if (primaryOrgId && pointerReassignable && user.primary_organization_id !== primaryOrgId) {
       await user.update({ primary_organization_id: primaryOrgId }, { transaction });
+      changed = true;
     }
 
     await transaction.commit();
+    if (changed) {
+      notifyProfileUpdated(user.id);
+    }
   } catch (error) {
     await transaction.rollback();
     log.error.error('Organization sync from claim failed', {

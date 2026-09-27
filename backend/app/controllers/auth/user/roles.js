@@ -1,6 +1,7 @@
 import { log } from '../../../utils/Logger.js';
 import db from '../../../models/index.js';
 import { problem, refuse } from '../../../utils/problem.js';
+import { notifyProfileUpdated } from '../../../utils/events.js';
 const { user: User, role: Role } = db;
 
 const roleNames = roles => roles.map(role => role.name);
@@ -214,6 +215,7 @@ export const setUserRoles = async (req, res) => {
     }
 
     await user.setRoles(known.filter(role => wanted.includes(role.name)));
+    notifyProfileUpdated(user.id);
     const roles = await user.getRoles({ order: [['id', 'ASC']] });
     return res.status(200).send({ message: req.__('users.rolesUpdated'), roles: roleNames(roles) });
   } catch (err) {

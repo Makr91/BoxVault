@@ -6,7 +6,8 @@ import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
 import { isReservedSegment } from '../../utils/reservedSegments.js';
-const { organization: Organization, sequelize } = db;
+import { notifyProfilesUpdated } from '../../utils/events.js';
+const { organization: Organization, sequelize, UserOrg } = db;
 
 /**
  * @swagger
@@ -233,6 +234,14 @@ export const update = async (req, res) => {
 
     // Reload to ensure persistence and get fresh data
     await org.reload();
+
+    if (org.name !== organizationName) {
+      const members = await UserOrg.findAll({
+        where: { organization_id: org.id },
+        attributes: ['user_id'],
+      });
+      notifyProfilesUpdated(members.map(member => member.user_id));
+    }
 
     return res.status(200).send({
       message: req.__('organizations.updated'),

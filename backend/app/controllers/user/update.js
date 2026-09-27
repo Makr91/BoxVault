@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateEmailHash } from '../../utils/identity.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { user: User } = db;
 
 /**
@@ -78,9 +79,10 @@ export const update = async (req, res) => {
     if (email) {
       user.email = email;
       user.emailHash = generateEmailHash(email);
+      await user.save();
+      notifyProfileUpdated(user.id);
     }
 
-    await user.save();
     return res.status(200).send({ message: 'User was updated successfully.' });
   } catch (err) {
     log.error.error('Error updating user:', err);

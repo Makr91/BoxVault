@@ -3,6 +3,7 @@ import db from '../../../models/index.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
 import { notifyInvitationAccepted } from './notifications.js';
+import { notifyProfileUpdated } from '../../../utils/events.js';
 
 const { invitation: Invitation, organization: Organization, user: User, UserOrg } = db;
 
@@ -112,6 +113,7 @@ export const acceptInvitation = async (req, res) => {
     });
 
     await invitation.update({ accepted: true, accepted_at: new Date() });
+    notifyProfileUpdated(userId);
 
     await notifyInvitationAccepted(invitation, organization, user);
 

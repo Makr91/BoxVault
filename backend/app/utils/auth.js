@@ -38,16 +38,21 @@ const getJwtClaimOptions = () => {
 // Single implementation of BoxVault JWT verification (signature + issuer/audience).
 // Every consumer of our own tokens (sessionAuth middleware, download tokens)
 // decodes through here. Rejects on any verification failure.
-const verifySessionToken = token => {
+const verifySessionToken = (token, options = {}) => {
   const authConfig = loadConfig('auth');
   return new Promise((resolve, reject) => {
-    verify(token, authConfig.auth.jwt.jwt_secret, getJwtClaimOptions(), (err, decodedToken) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(decodedToken);
+    verify(
+      token,
+      authConfig.auth.jwt.jwt_secret,
+      { ...getJwtClaimOptions(), ...options },
+      (err, decodedToken) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decodedToken);
+        }
       }
-    });
+    );
   });
 };
 

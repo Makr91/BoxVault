@@ -176,17 +176,21 @@ const probeOidcProviders = async () => {
     const authConfig = loadConfig('auth');
     if (authConfig?.auth?.oidc?.providers) {
       const { providers } = authConfig.auth.oidc;
-      for (const [key, provider] of Object.entries(providers)) {
-        if (provider.enabled === true && provider.issuer) {
-          // Probe the discovery document OIDC actually depends on — issuer
-          // roots legitimately answer 4xx (login walls) without OIDC being down.
+      // Probe the discovery document OIDC actually depends on — issuer
+      // roots legitimately answer 4xx (login walls) without OIDC being down.
+      const enabled = Object.entries(providers).filter(
+        ([, provider]) => provider.enabled === true && provider.issuer
+      );
+      const results = await Promise.all(
+        enabled.map(([key, provider]) => {
           const issuerBase = provider.issuer.replace(/\/+$/, '');
-          // eslint-disable-next-line no-await-in-loop
-          services[`oidc_${key}`] = await checkUrl(
-            `${issuerBase}/.well-known/openid-configuration`
-          );
-        }
-      }
+          return checkUrl(`${issuerBase}/.well-known/openid-configuration`).then(result => [
+            `oidc_${key}`,
+            result,
+          ]);
+        })
+      );
+      Object.assign(services, Object.fromEntries(results));
     }
   } catch {
     /* ignore */

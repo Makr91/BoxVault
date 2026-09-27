@@ -207,7 +207,7 @@ const applyOrgProfile = async (org, profile, transaction) => {
  * @param {Object} org - Mirrored organization instance
  * @param {string} orgUuid - Auth-server org UUID
  * @param {Object} transaction - Active transaction
- * @returns {Promise<void>}
+ * @returns {Promise<number[]>} The ids of the users whose membership changed
  */
 const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
   const { scimGroup: ScimGroup, credential: Credential, user: User, UserOrg } = db;
@@ -229,19 +229,14 @@ const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
   // Resolve UUIDs to BoxVault users; unknown UUIDs are ghosts and ignored.
   // Credentials are issuer-scoped (#30); findByIssuerAndSubject also claims
   // pre-issuer rows stored under the flat 'oidc' value.
-  const desired = new Map(); // user_id -> BoxVault org role
-  for (const [memberUuid, winner] of winningRoles) {
-    // eslint-disable-next-line no-await-in-loop -- memberships resolved sequentially in one txn
-    const credential = await Credential.findByIssuerAndSubject(
-      winner.issuer,
-      memberUuid,
-      transaction
-    );
-    if (!credential) {
-      continue;
-    }
-    desired.set(credential.user_id, winner.role);
-  }
+  const resolved = await Promise.all(
+    [...winningRoles].map(([memberUuid, winner]) =>
+      Credential.findByIssuerAndSubject(winner.issuer, memberUuid, transaction).then(credential =>
+        credential ? [credential.user_id, winner.role] : null
+      )
+    )
+  );
+  const desired = new Map(resolved.filter(Boolean)); // user_id -> BoxVault org role
 
   const existing = await UserOrg.findAll({
     where: { organization_id: org.id },
@@ -249,28 +244,32 @@ const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
   });
   const existingByUserId = new Map(existing.map(m => [m.user_id, m]));
 
-  for (const [userId, role] of desired) {
+  const applyMembership = async ([userId, role]) => {
     const membership = existingByUserId.get(userId);
     if (membership) {
-      if (membership.role !== role) {
-        // eslint-disable-next-line no-await-in-loop
-        await membership.update({ role }, { transaction });
+      if (membership.role === role) {
+        return null;
       }
-    } else {
-      // eslint-disable-next-line no-await-in-loop
-      const user = await User.findByPk(userId, { transaction });
-      // eslint-disable-next-line no-await-in-loop
-      await UserOrg.create(
-        {
-          user_id: userId,
-          organization_id: org.id,
-          role,
-          is_primary: !!user && user.primary_organization_id === org.id,
-        },
-        { transaction }
-      );
+      await membership.update({ role }, { transaction });
+      return userId;
     }
-  }
+    const user = await User.findByPk(userId, { transaction });
+    await UserOrg.create(
+      {
+        user_id: userId,
+        organization_id: org.id,
+        role,
+        is_primary: !!user && user.primary_organization_id === org.id,
+      },
+      { transaction }
+    );
+    return userId;
+  };
+  const applied = await [...desired].reduce(
+    (chain, entry) => chain.then(done => applyMembership(entry).then(result => [...done, result])),
+    Promise.resolve([])
+  );
+  const changed = applied.filter(userId => userId !== null);
 
   const staleUserIds = existing.filter(m => !desired.has(m.user_id)).map(m => m.user_id);
   if (staleUserIds.length) {
@@ -282,6 +281,7 @@ const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
       transaction,
     });
   }
+  return [...changed, ...staleUserIds];
 };
 
 /**
@@ -289,14 +289,21 @@ const recomputeOrgMemberships = async (db, org, orgUuid, transaction) => {
  * (organization/delete.js): destroy the row, then remove its storage
  * directory. The destroy runs inside the caller's transaction; the directory
  * removal must happen AFTER commit via the returned callback.
+ * @param {Object} db - Database models
  * @param {Object} org - Organization instance
  * @param {Object} transaction - Active transaction
- * @returns {Promise<Function>} Post-commit cleanup callback
+ * @returns {Promise<{ memberIds: number[], cleanup: Function }>} The members the org had, and the post-commit cleanup callback
  */
-const destroyMirrorOrg = async (org, transaction) => {
+const destroyMirrorOrg = async (db, org, transaction) => {
   const orgName = org.name;
+  const members = await db.UserOrg.findAll({
+    where: { organization_id: org.id },
+    attributes: ['user_id'],
+    transaction,
+  });
+  const memberIds = members.map(member => member.user_id);
   await org.destroy({ transaction });
-  return () => {
+  const cleanup = () => {
     try {
       const dirPath = getSecureBoxPath(orgName);
       if (fs.existsSync(dirPath)) {
@@ -309,6 +316,7 @@ const destroyMirrorOrg = async (org, transaction) => {
       });
     }
   };
+  return { memberIds, cleanup };
 };
 
 export {

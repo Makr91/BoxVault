@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { user: User, UserOrg } = db;
 
 const badRequest = (req, res, key) =>
@@ -133,6 +134,7 @@ const updateUserOrgRole = async (req, res) => {
     // Update the role
     const previousRole = membership.role;
     await membership.update({ role });
+    notifyProfileUpdated(user.id);
 
     log.api.info('User organization role updated', {
       userId,

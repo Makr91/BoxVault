@@ -236,11 +236,13 @@ const mockIsoHelpers = {
 
 const mockNotifyHealth = jest.fn();
 const mockEvents = {
-  TOPICS: ['session', 'notifications', 'health'],
+  TOPICS: ['session', 'notifications', 'health', 'profile'],
   openEventStream: jest.fn(),
   broadcast: jest.fn(),
   notifySessionTerminated: jest.fn(),
   notifyUnreadCount: jest.fn(),
+  notifyProfileUpdated: jest.fn(),
+  notifyProfilesUpdated: jest.fn(),
   notifyHealth: mockNotifyHealth,
 };
 

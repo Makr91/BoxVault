@@ -2,6 +2,7 @@ import { log } from '../../utils/Logger.js';
 import { problem, refuse } from '../../utils/problem.js';
 import { PROFILE_MEMBERS, profileOf, profilePatchOf } from '../../utils/profile.js';
 import db from '../../models/index.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 
 const { user: User } = db;
 
@@ -101,6 +102,7 @@ export const patchUser = async (req, res) => {
     const patch = profilePatchOf(body);
     if (Object.keys(patch).length > 0) {
       await user.update(patch);
+      notifyProfileUpdated(user.id);
     }
     return res.status(200).send(profileOf(user));
   } catch (err) {

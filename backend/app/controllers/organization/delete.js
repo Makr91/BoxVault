@@ -5,8 +5,15 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { removeUnreferencedIsoFiles } from '../iso/helpers.js';
+import { notifyProfilesUpdated } from '../../utils/events.js';
 
-const { organization: Organization, iso: ISO, isoVersions: IsoVersion, isoFiles: IsoFile } = db;
+const {
+  organization: Organization,
+  iso: ISO,
+  isoVersions: IsoVersion,
+  isoFiles: IsoFile,
+  UserOrg,
+} = db;
 
 /**
  * @swagger
@@ -70,6 +77,11 @@ const _delete = async (req, res) => {
       .flatMap(iso => iso.versions)
       .flatMap(version => version.files.map(file => file.get({ plain: true })));
 
+    const members = await UserOrg.findAll({
+      where: { organization_id: organization.id },
+      attributes: ['user_id'],
+    });
+
     const transaction = await db.sequelize.transaction();
     try {
       await ISO.destroy({ where: { organizationId: organization.id }, transaction });
@@ -79,6 +91,7 @@ const _delete = async (req, res) => {
       await transaction.rollback();
       throw err;
     }
+    notifyProfilesUpdated(members.map(member => member.user_id));
 
     await removeUnreferencedIsoFiles(isoFiles);
 

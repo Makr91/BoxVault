@@ -2,6 +2,7 @@
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { user: User } = db;
 
 /**
@@ -81,6 +82,7 @@ export const changeName = async (req, res) => {
 
     user.name = trimmed || null;
     await user.save();
+    notifyProfileUpdated(user.id);
 
     return res.status(200).send({
       message: req.__('users.nameChanged'),

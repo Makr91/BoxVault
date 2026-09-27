@@ -126,6 +126,7 @@ export default (sequelize, Sequelize) => {
       order: [
         ['is_primary', 'DESC'],
         ['joined_at', 'ASC'],
+        ['organization_id', 'ASC'],
       ],
       raw: true,
       nest: true,

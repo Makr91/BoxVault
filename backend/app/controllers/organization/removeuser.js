@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { user: User, Sequelize, UserOrg, invitation: Invitation } = db;
 
 const ROLE_RANK = { owner: 3, admin: 2, member: 1, guest: 0 };
@@ -83,6 +84,7 @@ const removeMembershipFromOrg = async (req, res, user, organizationId) => {
   await Invitation.destroy({
     where: { email: user.email, organizationId, accepted: false },
   });
+  notifyProfileUpdated(user.id);
 
   log.api.info('User removed from organization', {
     userId: user.id,

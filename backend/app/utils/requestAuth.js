@@ -18,7 +18,7 @@ import { getOidcConfiguration } from '../auth/passport.js';
 import externalUserHandler from '../auth/external-user-handler.js';
 import db from '../models/index.js';
 
-const { JsonWebTokenError } = jwt;
+const { JsonWebTokenError, TokenExpiredError } = jwt;
 const { credential: Credential, user: User, revokedSession: RevokedSession } = db;
 
 const AUTHORIZATION_SCHEMES = ['Bearer', 'DPoP'];
@@ -241,9 +241,42 @@ const isSessionRevoked = async claims => {
   return Boolean(await RevokedSession.findOne({ where: named }));
 };
 
-const resolveSessionAuth = async token => {
+/**
+ * The claims of a session JWT that failed only on `exp`, when the session is
+ * an identity-provider one carrying a refresh token: the provider is the
+ * judge of whether it lives on, so the claims are read with expiry ignored
+ * and the signature, issuer and audience still enforced. Any other lapsed
+ * token stays refused.
+ * @param {string} token - The presented session JWT
+ * @returns {Promise<Object|null>} The claims, or null
+ */
+const lapsedOidcClaims = async token => {
+  const claims = await verifySessionToken(token, { ignoreExpiration: true });
+  const renewable =
+    typeof claims.provider === 'string' &&
+    claims.provider.startsWith('oidc-') &&
+    typeof claims.oidc_refresh_token === 'string' &&
+    claims.oidc_refresh_token !== '' &&
+    !claims.is_service_account;
+  return renewable ? claims : null;
+};
+
+const resolveSessionAuth = async (token, allowLapsedOidc) => {
   try {
-    const claims = await verifySessionToken(token);
+    let lapsed = false;
+    let claims;
+    try {
+      claims = await verifySessionToken(token);
+    } catch (err) {
+      if (!(allowLapsedOidc && err instanceof TokenExpiredError)) {
+        throw err;
+      }
+      claims = await lapsedOidcClaims(token);
+      if (!claims) {
+        throw err;
+      }
+      lapsed = true;
+    }
     if (await isSessionRevoked(claims)) {
       log.auth.info('Session token refused: the identity provider ended its session', {
         userId: claims.id,
@@ -260,6 +293,7 @@ const resolveSessionAuth = async token => {
       stayLoggedIn: claims.stay_logged_in,
       organizations: claims.organizations,
       claims,
+      lapsed,
     };
   } catch (err) {
     if (!(err instanceof JsonWebTokenError)) {
@@ -276,18 +310,21 @@ const resolveSessionAuth = async token => {
  * provider on Authorization, as Bearer or, when key-bound, as DPoP with a
  * proof; a raw service-account key on Authorization: Bearer or x-access-token.
  * A refused credential logs its reason and resolves to null; a JWT that fails
- * verification is refused outright and never retried as a raw key.
+ * verification is refused outright and never retried as a raw key. With
+ * allowLapsedOidc, a session JWT that failed only on `exp` and belongs to an
+ * identity-provider session carrying a refresh token resolves with `lapsed`
+ * true, for the refresh route alone.
  * @param {import('express').Request} req - The request
- * @param {{sessionOnly?: boolean}} [options] - sessionOnly accepts the session JWT alone
+ * @param {{sessionOnly?: boolean, allowLapsedOidc?: boolean}} [options] - sessionOnly accepts the session JWT alone; allowLapsedOidc admits a lapsed identity-provider session
  * @returns {Promise<{userId: number, isServiceAccount: boolean, serviceAccountId?: number,
  *   stayLoggedIn?: boolean, organizations?: Object[], provider?: string,
- *   oidcAccessToken?: string, claims?: Object}|null>} The caller, or null
+ *   oidcAccessToken?: string, claims?: Object, lapsed?: boolean}|null>} The caller, or null
  * @throws {Error} When the configuration cannot be loaded
  */
-const resolveRequestAuth = async (req, { sessionOnly = false } = {}) => {
+const resolveRequestAuth = async (req, { sessionOnly = false, allowLapsedOidc = false } = {}) => {
   const sessionToken = req.headers['x-access-token'];
   if (sessionToken) {
-    const session = await resolveSessionAuth(sessionToken);
+    const session = await resolveSessionAuth(sessionToken, allowLapsedOidc);
     if (session) {
       return session;
     }

@@ -1,6 +1,7 @@
 import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { organization: Organization, user: User, UserOrg } = db;
 
 /**
@@ -96,6 +97,7 @@ const setPrimaryOrganization = async (req, res) => {
 
     // Update user's primary_organization_id field (denormalized)
     await User.update({ primary_organization_id: organization.id }, { where: { id: userId } });
+    notifyProfileUpdated(userId);
 
     log.api.info('Primary organization updated', {
       userId,

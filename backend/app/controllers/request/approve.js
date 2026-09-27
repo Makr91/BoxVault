@@ -3,6 +3,7 @@ import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { createExternalInvite } from '../../utils/externalInvites.js';
 import { extractOidcAccessToken } from '../favorites/helpers.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { Request, organization: Organization, user: User } = db;
 
 const RETRY_AFTER_SECONDS = '60';
@@ -214,6 +215,7 @@ export const approveJoinRequest = async (req, res) => {
 
     // Approve the request
     await Request.approveRequest(requestId, reviewerId, assignedRole);
+    notifyProfileUpdated(request.user_id);
 
     log.api.info('Join request approved', {
       requestId,

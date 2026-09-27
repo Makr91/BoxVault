@@ -306,6 +306,13 @@ describe('Events API', () => {
       const garbledFrames = await garbled.readUntil(2);
       expect(garbledFrames[1].event).toBe('reset');
       garbled.close();
+
+      const future = await openStream({
+        headers: { 'x-access-token': userToken, 'Last-Event-ID': `${Date.now() + 3600000}-0` },
+      });
+      const futureFrames = await future.readUntil(2);
+      expect(futureFrames[1].event).toBe('reset');
+      future.close();
     });
 
     it('should push session-terminated to the user and close the stream', async () => {

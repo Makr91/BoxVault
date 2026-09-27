@@ -99,7 +99,7 @@ curl -X POST https://boxvault.example.com/api/auth/refresh-token \
   -d '{"stay_logged_in":true}'
 ```
 
-The answer is the sign-in body again with a new `access_token`. The STARTcloud UI refreshes four minutes after the last refresh while the session was kept.
+The answer is the sign-in body again with a new `access_token`. The STARTcloud UI refreshes a minute before the token's `exp`. An identity-provider session whose token has already passed `exp` is renewed here alone: its signature is checked with expiry ignored, its refresh token is presented to the provider, and the new token is minted from the provider's answer; a refused grant answers `401`, a provider that cannot be reached `502`. `GET /api/user` answers the profile alone, never a token, with an `ETag` and `Cache-Control: no-store`; a request carrying the tag as `If-None-Match` is answered `304`.
 
 ### Token Revocation
 

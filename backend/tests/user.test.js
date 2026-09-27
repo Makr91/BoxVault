@@ -5,9 +5,6 @@ import db from '../app/models/index.js';
 import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import yaml from 'js-yaml';
-import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 
@@ -108,6 +105,31 @@ describe('User API', () => {
       expect(res.body.middle_name).toBeNull();
       expect(res.body.mobile_number).toBeNull();
       expect(res.body.address).toBeNull();
+      expect(res.body).not.toHaveProperty('access_token');
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.headers.etag).toMatch(/^W\/"/);
+    });
+
+    it('should answer 304 with no body while the profile is unchanged, and a body once it changed', async () => {
+      const first = await request(app).get('/api/user').set('x-access-token', userToken);
+      const unchanged = await request(app)
+        .get('/api/user')
+        .set('x-access-token', userToken)
+        .set('If-None-Match', first.headers.etag);
+      expect(unchanged.statusCode).toBe(304);
+      expect(unchanged.text).toBe('');
+
+      await request(app)
+        .put(`/api/users/${testUser.id}/change-name`)
+        .set('x-access-token', userToken)
+        .send({ name: 'Renamed' });
+      const changed = await request(app)
+        .get('/api/user')
+        .set('x-access-token', userToken)
+        .set('If-None-Match', first.headers.etag);
+      expect(changed.statusCode).toBe(200);
+      expect(changed.body.name).toBe('Renamed');
+      expect(changed.headers.etag).not.toBe(first.headers.etag);
     });
   });
 
@@ -993,33 +1015,6 @@ describe('User API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.roles).toEqual([]);
-    });
-
-    it('GET /api/user - should use default token expiration if config value is missing', async () => {
-      // 1. Read current auth config
-      const configPath = getConfigPath('auth');
-      const originalConfig = fs.readFileSync(configPath, 'utf8');
-      const parsedConfig = yaml.load(originalConfig);
-
-      // 2. Modify config to remove expiration
-      delete parsedConfig.auth.jwt.jwt_expiration;
-      fs.writeFileSync(configPath, yaml.dump(parsedConfig));
-      await reloadConfig();
-
-      try {
-        // 3. Make request - controller will reload config from disk
-        const res = await request(app).get('/api/user').set('x-access-token', userToken);
-
-        expect(res.statusCode).toBe(200);
-        expect(res.body).toHaveProperty('access_token');
-        // We can't easily verify the expiration time of the returned token without decoding it
-        // and checking the 'exp' claim, but the fact that it didn't crash and returned 200
-        // means the fallback '24h' was likely used (or it would have thrown an error).
-      } finally {
-        // 4. Restore original config
-        fs.writeFileSync(configPath, originalConfig);
-        await reloadConfig();
-      }
     });
 
     it('PUT /api/users/:userId/change-email - should handle errors', async () => {

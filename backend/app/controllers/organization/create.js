@@ -4,6 +4,7 @@ import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 import { generateOrgCode } from '../../utils/identity.js';
 import { isReservedSegment } from '../../utils/reservedSegments.js';
+import { notifyProfileUpdated } from '../../utils/events.js';
 const { organization: Organization, UserOrg } = db;
 
 /**
@@ -94,6 +95,7 @@ export const create = async (req, res) => {
       role: 'owner',
       is_primary: false,
     });
+    notifyProfileUpdated(req.userId);
 
     return res.status(201).send(data);
   } catch (err) {
