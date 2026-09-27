@@ -22,8 +22,13 @@ describe('The served UI build', () => {
     expect(root.statusCode).toBe(200);
     expect(root.headers['content-type']).toContain('text/html');
     expect(root.headers['cache-control']).toBe('no-store, no-transform');
-    expect(root.text).toContain('<html data-brand-theme="light"');
+    expect(root.text).toContain('<html lang=');
+    expect(root.text).not.toContain(' data-brand-theme="');
     expect(root.text).not.toContain('data-brand=');
+
+    const face = await request(app).get('/').set('Host', 'face.test');
+    expect(face.statusCode).toBe(200);
+    expect(face.text).not.toContain(' data-brand-theme="');
 
     const direct = await request(app).get('/index.html');
     expect(direct.statusCode).toBe(404);

@@ -263,15 +263,48 @@ describe('External user handling from identity-provider claims', () => {
       expect(returning.avatar_url).toBe('https://cdn.example/fresher.png');
     });
 
-    it('should keep the stored pack and motion when the claims carry malformed ones', async () => {
+    it('should apply the preferences object as full desired state, a malformed member clearing', async () => {
       const returning = await externalUserHandler.handleExternalUser(
         PROVIDER,
-        { ...baseProfile, preferences: { pack: 'Not A Pack', motion: 'none' } },
+        { ...baseProfile, preferences: { theme: 'dark', pack: 'Not A Pack', motion: 'none' } },
         db,
         authConfig
       );
-      expect(returning.preferredPack).toBe('lcars');
-      expect(returning.preferredMotion).toBe('reduce');
+      expect(returning.preferredTheme).toBe('dark');
+      expect(returning.preferredPack).toBeNull();
+      expect(returning.preferredMotion).toBeNull();
+    });
+
+    it('should clear the look when the identity provider carries nulls, and keep it when the object is absent', async () => {
+      const set = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        { ...baseProfile, preferences: { theme: 'dark', pack: 'lcars', motion: 'reduce' } },
+        db,
+        authConfig
+      );
+      expect(set.preferredPack).toBe('lcars');
+
+      const { preferences, ...withoutObject } = baseProfile;
+      void preferences;
+      const kept = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        withoutObject,
+        db,
+        authConfig
+      );
+      expect(kept.preferredTheme).toBe('dark');
+      expect(kept.preferredPack).toBe('lcars');
+      expect(kept.preferredMotion).toBe('reduce');
+
+      const cleared = await externalUserHandler.handleExternalUser(
+        PROVIDER,
+        { ...baseProfile, preferences: { theme: null, pack: null, motion: null } },
+        db,
+        authConfig
+      );
+      expect(cleared.preferredTheme).toBeNull();
+      expect(cleared.preferredPack).toBeNull();
+      expect(cleared.preferredMotion).toBeNull();
     });
 
     it('should provision a guest from the organizations claim', async () => {

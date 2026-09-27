@@ -502,6 +502,34 @@ describe('SCIM Users receiver', () => {
       );
     });
 
+    it('should clear the three look columns on a push carrying three nulls and push profile-updated', async () => {
+      Object.assign(storedUser, {
+        preferredTheme: 'dark',
+        preferredPack: 'lcars',
+        preferredMotion: 'reduce',
+      });
+      const res = buildResponse();
+      const body = matchingBody({
+        [USER_EXTENSION]: { preferences: { theme: null, pack: null, motion: null } },
+      });
+
+      await putUser(buildRequest(body), res);
+
+      expect(storedUser.update).toHaveBeenCalledWith({
+        preferredTheme: null,
+        preferredPack: null,
+        preferredMotion: null,
+      });
+      expect(mockEvents.notifyProfileUpdated).toHaveBeenCalledWith(7);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          [USER_EXTENSION]: expect.objectContaining({
+            preferences: { theme: null, pack: null, motion: null },
+          }),
+        })
+      );
+    });
+
     it('should store an http avatar pushed on photos', async () => {
       const res = buildResponse();
       const body = matchingBody({

@@ -523,6 +523,27 @@ const resolvePreferredMotion = profile => {
 };
 
 /**
+ * The look a profile's `preferences` object states as full desired state:
+ * the three columns with a null for an absent, null or malformed member, so
+ * a value cleared at the identity provider clears here; null when the
+ * profile carries no `preferences` object at all, which leaves the stored
+ * look untouched.
+ * @param {Object} profile - Token/userinfo claims
+ * @returns {{preferredTheme: string|null, preferredPack: string|null, preferredMotion: string|null}|null}
+ */
+const resolveLook = profile => {
+  const { preferences } = profile;
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) {
+    return null;
+  }
+  return {
+    preferredTheme: resolvePreferredTheme(profile),
+    preferredPack: resolvePreferredPack(profile),
+    preferredMotion: resolvePreferredMotion(profile),
+  };
+};
+
+/**
  * Create new external user
  * @param {string} provider - Auth provider
  * @param {Object} profile - User profile
@@ -719,19 +740,14 @@ const handleExternalUser = async (provider, profile, db, authConfig) => {
       await user.update({ preferredLanguage });
     }
 
-    const preferredTheme = resolvePreferredTheme(profile);
-    if (preferredTheme && user.preferredTheme !== preferredTheme) {
-      await user.update({ preferredTheme });
-    }
-
-    const preferredPack = resolvePreferredPack(profile);
-    if (preferredPack && user.preferredPack !== preferredPack) {
-      await user.update({ preferredPack });
-    }
-
-    const preferredMotion = resolvePreferredMotion(profile);
-    if (preferredMotion && user.preferredMotion !== preferredMotion) {
-      await user.update({ preferredMotion });
+    const look = resolveLook(profile);
+    if (look) {
+      const patch = Object.fromEntries(
+        Object.entries(look).filter(([column, value]) => (user[column] ?? null) !== value)
+      );
+      if (Object.keys(patch).length > 0) {
+        await user.update(patch);
+      }
     }
 
     const timezone = resolveTimezone(profile);

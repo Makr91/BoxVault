@@ -40,8 +40,13 @@ const stampLinks = (html, folder) =>
       )
     : html;
 
+const themeOf = site => {
+  const theme = site?.brand?.default_theme;
+  return theme === 'light' || theme === 'dark' ? theme : null;
+};
+
 const stamp = (html, theme, pack, folder) => {
-  let attributes = ` data-brand-theme="${escape(theme)}"`;
+  let attributes = theme ? ` data-brand-theme="${theme}"` : '';
   if (pack) {
     attributes += ` data-brand="${escape(pack.name)}"`;
   }
@@ -64,11 +69,12 @@ const pageFor = path =>
 /**
  * The handler answering a page GET with the served UI's index.html, read from
  * disk on every request and stamped for the site the request's hostname
- * selects: data-brand-theme with the site's default theme (light when unset),
- * data-brand and the pack stylesheet link before the head's end when the site
- * names a pack, every icon link of the head pointed into the site's brand
- * folder when its logo_url names one, answered no-store; the callback entry is
- * served for /callback/.
+ * selects: data-brand-theme with the site's default theme only while its
+ * brand.default_theme names one, nothing otherwise so the page follows the
+ * operating system's scheme, data-brand and the pack stylesheet link before
+ * the head's end when the site names a pack, every icon link of the head
+ * pointed into the site's brand folder when its logo_url names one, answered
+ * no-store; the callback entry is served for /callback/.
  * @param {number} [status] - The status to answer, 404 for a refused direct file address
  * @returns {Function} The Express handler
  */
@@ -86,12 +92,7 @@ const uiIndex =
         .send('Not Found');
     }
     const site = getSiteConfig(req.hostname);
-    const html = stamp(
-      raw,
-      site?.brand?.default_theme || 'light',
-      packOf(site),
-      brandFolderOf(site)
-    );
+    const html = stamp(raw, themeOf(site), packOf(site), brandFolderOf(site));
     return res
       .status(status)
       .set('Cache-Control', 'no-store, no-transform')
