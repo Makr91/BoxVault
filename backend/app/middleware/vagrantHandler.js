@@ -1,7 +1,5 @@
 import { log } from '../utils/Logger.js';
 import { extractBearerToken, findServiceAccountByRawToken } from '../utils/serviceAccountAuth.js';
-import { t, getDefaultLocale } from '../config/i18n.js';
-import { problem } from '../utils/problem.js';
 
 const isVagrantRequest = req => {
   const userAgent = req.headers['user-agent'] || '';
@@ -120,27 +118,14 @@ const vagrantHandler = async (req, res, next) => {
     return next();
   }
 
-  // For Vagrant requests, validate the Bearer token. A PRESENTED token that
-  // fails validation is rejected immediately — it must never silently degrade
-  // to anonymous access. Requests with no credentials stay anonymous so public
-  // box downloads keep working. (This middleware runs before the i18n
-  // middleware, so translation goes through t() with the default locale.)
   const bearerToken = extractBearerToken(req);
   if (bearerToken) {
     const authInfo = await validateVagrantToken(bearerToken);
-    if (!authInfo) {
-      log.app.warn('Vagrant request presented an invalid or expired service account token', {
-        url: req.url,
-      });
-      return problem(res, req, {
-        status: 401,
-        type: 'authentication',
-        title: t('auth.vagrantInvalidToken', getDefaultLocale()),
-      });
+    if (authInfo) {
+      req.userId = authInfo.userId;
+      req.isServiceAccount = authInfo.isServiceAccount;
+      req.serviceAccountId = authInfo.serviceAccountId;
     }
-    req.userId = authInfo.userId;
-    req.isServiceAccount = authInfo.isServiceAccount;
-    req.serviceAccountId = authInfo.serviceAccountId;
   }
 
   // Parse the URL

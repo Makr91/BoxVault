@@ -735,13 +735,13 @@ describe('Box API', () => {
       expect(res.statusCode).toBe(200);
     });
 
-    it('should reject Vagrant request with an invalid Bearer token', async () => {
+    it('should treat an invalid Bearer token on a Vagrant request as no token', async () => {
       const res = await request(app)
         .get(`/api/organization/${orgName}/box/${privateBoxName}`)
         .set('Authorization', 'Bearer not-a-valid-service-account-token')
         .set('User-Agent', 'Vagrant/2.2.19');
 
-      expect(res.statusCode).toBe(401);
+      expect(res.statusCode).toBe(403);
     });
 
     it('should return Vagrant metadata when User-Agent is Vagrant', async () => {

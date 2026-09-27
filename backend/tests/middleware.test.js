@@ -182,8 +182,6 @@ const mockFsHelper = {
 };
 jest.unstable_mockModule('../app/utils/fsHelper.js', () => mockFsHelper);
 
-// vagrantHandler translates its 401 through the i18n module directly (it runs
-// before the i18n middleware); stub it so tests stay locale-independent.
 jest.unstable_mockModule('../app/config/i18n.js', () => ({
   t: jest.fn(key => key),
   getDefaultLocale: jest.fn(() => 'en'),
@@ -415,38 +413,33 @@ describe('Middleware Tests', () => {
       );
     });
 
-    it('should reject with 401 when service account not found', async () => {
+    it('should continue without a user when the service account is not found', async () => {
       req.headers.authorization = 'Bearer invalid-token';
       mockDb.service_account.findOne.mockResolvedValue(null);
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.type).toHaveBeenCalledWith('application/problem+json');
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'https://auth.startcloud.com/probs/authentication',
-          title: 'auth.vagrantInvalidToken',
-        })
-      );
-      expect(next).not.toHaveBeenCalled();
+      expect(req.isServiceAccount).toBeUndefined();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.send).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
     });
 
-    it('should reject with 401 when service account has no user', async () => {
+    it('should continue without a user when the service account has no user', async () => {
       req.headers.authorization = 'Bearer orphan-token';
       mockDb.service_account.findOne.mockResolvedValue({ user: null });
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(next).not.toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
     });
 
-    it('should reject with 401 on database error in token validation', async () => {
+    it('should continue without a user on a database error in token validation', async () => {
       req.headers.authorization = 'Bearer error-token';
       mockDb.service_account.findOne.mockRejectedValue(new Error('DB Error'));
       await vagrantHandler(req, res, next);
       expect(req.userId).toBeUndefined();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(next).not.toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalled();
     });
 
     it('should skip static files', async () => {

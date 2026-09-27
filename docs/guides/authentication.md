@@ -263,7 +263,7 @@ Vagrant.configure("2") do |config|
 end
 ```
 
-Vagrant identifies itself by its user agent; a presented token that is invalid or expired is refused with `401`, and a request without one reaches public boxes only.
+Vagrant identifies itself by its user agent; a presented token that is invalid or expired is treated as no token, and a request without a valid one reaches public boxes only.
 
 ## Troubleshooting
 
