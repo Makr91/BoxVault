@@ -28,7 +28,7 @@
     "format:fix": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.9.8"
+    "prettier": "^3.9.9"
   },
   "overrides": {
     "shell-quote": "^1.9.0"
