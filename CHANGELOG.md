@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.106.1](https://github.com/Makr91/BoxVault/compare/v0.106.0...v0.106.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* uploads replace a file only after it fully arrives, and a patch never holds two files with the same name ([ac11d98](https://github.com/Makr91/BoxVault/commit/ac11d988f391068f9ace7dadf25aaa4a99e57d2d))
+
 ## [0.106.0](https://github.com/Makr91/BoxVault/compare/v0.105.0...v0.106.0) (2026-10-01)
 
 
