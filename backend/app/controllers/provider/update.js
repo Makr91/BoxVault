@@ -1,6 +1,5 @@
 // update.js
-import fs from 'fs';
-import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
+import { getSecureBoxPath, isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -104,10 +103,8 @@ const { Op } = Sequelize;
  *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName } = req.params;
+  const { providerName } = req.params;
   const { name, description, recursive } = req.body;
-  const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber, providerName);
-  const newFilePath = getSecureBoxPath(organization, boxId, versionNumber, name || providerName);
 
   try {
     const { organizationData, boxData: box, versionData: version } = req;
@@ -135,9 +132,10 @@ export const update = async (req, res) => {
       });
     }
 
-    if (name && name !== providerName) {
+    const finalName = name || current.name;
+    if (finalName !== current.name) {
       const existingProvider = await Provider.findOne({
-        where: { name, versionId: version.id, id: { [Op.ne]: current.id } },
+        where: { name: finalName, versionId: version.id, id: { [Op.ne]: current.id } },
       });
       if (existingProvider) {
         return conflict(res, req, '/name', version.versionNumber);
@@ -152,10 +150,22 @@ export const update = async (req, res) => {
       }
     }
 
-    renameDirectory(oldFilePath, newFilePath);
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
+    const oldFilePath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      current.name
+    );
+    const newFilePath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      finalName
+    );
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/name', version.versionNumber);
     }
+    renameDirectory(oldFilePath, newFilePath);
 
     const updatePayload = {};
     if (name) {

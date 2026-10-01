@@ -1,6 +1,6 @@
 // update.js
-import fs from 'fs';
-import { getSecureBoxPath } from '../../utils/paths.js';
+import { getSecureBoxPath, isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
+import { renameStoragePaths, storagePathFor } from '../download/helpers.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -72,7 +72,7 @@ const { organization: Organization, sequelize, UserOrg } = db;
  *             schema:
  *               $ref: '#/components/schemas/Problem'
  *       409:
- *         description: The new name or organization code is already taken, or the new name is a reserved path segment
+ *         description: The new name or organization code is already taken, the new name is a reserved path segment, or a directory holding entries already stands under the new name
  *         content:
  *           application/problem+json:
  *             schema:
@@ -155,36 +155,12 @@ const getTakenValue = async (org, organization, orgCode) => {
   return null;
 };
 
-/**
- * Move an org's storage directory on rename. Only acts when the old directory
- * exists and the paths differ; a failure throws so the caller rolls the
- * database update back.
- * @param {string} oldFilePath - Current storage path
- * @param {string} newFilePath - Target storage path
- * @returns {void}
- * @throws {Error} When the directory cannot be moved
- */
-const moveOrgDirectory = (oldFilePath, newFilePath) => {
-  if (fs.existsSync(oldFilePath) && oldFilePath !== newFilePath) {
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
-    }
-    fs.renameSync(oldFilePath, newFilePath);
-    if (fs.existsSync(oldFilePath)) {
-      fs.rmSync(oldFilePath, { recursive: true, force: true });
-    }
-  }
-};
-
 export const update = async (req, res) => {
   const { organization: organizationName } = req.params;
   const { description } = req.body;
   const organization = trimIfSet(req.body.organization);
   const email = trimIfSet(req.body.email);
   const org_code = trimIfSet(req.body.org_code);
-
-  const oldFilePath = getSecureBoxPath(organizationName);
-  const newFilePath = getSecureBoxPath(organization || organizationName);
 
   try {
     const org = await Organization.findOne({
@@ -213,6 +189,14 @@ export const update = async (req, res) => {
       return conflict(res, req, taken.pointer, 'global');
     }
 
+    const oldName = org.name;
+    const newName = organization || oldName;
+    const oldFilePath = getSecureBoxPath(oldName);
+    const newFilePath = getSecureBoxPath(newName);
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/organization', 'global');
+    }
+
     const transaction = await sequelize.transaction();
     try {
       await org.update(
@@ -225,17 +209,21 @@ export const update = async (req, res) => {
         },
         { transaction }
       );
-      moveOrgDirectory(oldFilePath, newFilePath);
+      renameDirectory(oldFilePath, newFilePath);
       await transaction.commit();
     } catch (err) {
       await transaction.rollback();
       throw err;
     }
 
+    if (newName !== oldName) {
+      await renameStoragePaths(storagePathFor(oldName), storagePathFor(newName));
+    }
+
     // Reload to ensure persistence and get fresh data
     await org.reload();
 
-    if (org.name !== organizationName) {
+    if (org.name !== oldName) {
       const members = await UserOrg.findAll({
         where: { organization_id: org.id },
         attributes: ['user_id'],

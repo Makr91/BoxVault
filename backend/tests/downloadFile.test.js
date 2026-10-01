@@ -1309,6 +1309,25 @@ describe('Download file API', () => {
         .send({ key: 'container' });
       expect(conflict.statusCode).toBe(409);
 
+      const sameName = await request(app)
+        .put(`${patchBase}/file/windows-x64`)
+        .set('x-access-token', ownerToken)
+        .send({ file_name: 'Domino_14.5.1_Container_Image.tgz' });
+      expect(sameName.statusCode).toBe(409);
+      expect(sameName.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/file_name',
+          rule: 'unique',
+          params: { scope: patchName },
+        }),
+      ]);
+      expect(
+        fs.existsSync(filePath(releaseNumber, patchName, 'Domino_14.5.1_Windows_English.exe'))
+      ).toBe(true);
+      expect(
+        fs.existsSync(filePath(releaseNumber, patchName, 'Domino_14.5.1_Container_Image.tgz'))
+      ).toBe(true);
+
       const invalid = await request(app)
         .put(`${patchBase}/file/windows-x64`)
         .set('x-access-token', ownerToken)

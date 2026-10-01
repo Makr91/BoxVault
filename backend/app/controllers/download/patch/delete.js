@@ -51,8 +51,6 @@ const { downloadFiles: DownloadFile } = db;
  *         description: Internal server error
  */
 const deletePatch = async (req, res) => {
-  const { organization, patch: patchName } = req.params;
-
   try {
     const { organizationData, downloadData: download, releaseData: release, patchData } = req;
 
@@ -71,10 +69,10 @@ const deletePatch = async (req, res) => {
     await patchData.destroy();
 
     const patchPath = getSecureDownloadPath(
-      organization,
+      organizationData.name,
       download.name,
       release.versionNumber,
-      patchName
+      patchData.name
     );
     try {
       await fs.promises.rm(patchPath, { recursive: true, force: true });

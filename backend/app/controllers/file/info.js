@@ -1,5 +1,5 @@
 // info.file.controller.js
-import { loadConfig } from '../../utils/config-loader.js';
+import { getOrigin, loadConfig } from '../../utils/config-loader.js';
 import { generateDownloadToken } from '../../utils/auth.js';
 import { log } from '../../utils/Logger.js';
 import {
@@ -138,7 +138,6 @@ const info = async (req, res) => {
   });
 
   try {
-    const appConfig = loadConfig('app');
     const authConfig = loadConfig('auth');
 
     // Entities are pre-loaded by verifyBoxFilePath middleware
@@ -184,7 +183,7 @@ const info = async (req, res) => {
         );
 
         // Create secure download URL
-        const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+        const downloadUrl = `${getOrigin(req.hostname)}/api/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
         return res.send({
           file_name: fileRecord.fileName,
@@ -232,7 +231,7 @@ const info = async (req, res) => {
       );
 
       // Create secure download URL
-      const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
+      const downloadUrl = `${getOrigin(req.hostname)}/api/organization/${organization}/box/${boxId}/version/${versionNumber}/provider/${providerName}/architecture/${architectureName}/file/download?token=${downloadToken}`;
 
       return res.send({
         file_name: fileRecord.fileName,

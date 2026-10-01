@@ -149,10 +149,10 @@ const _delete = async (req, res) => {
     // Delete all files and directories associated with each architecture
     const deletePromises = architectures.map(architecture => {
       const filePath = getSecureBoxPath(
-        organization,
-        boxId,
-        versionNumber,
-        providerName,
+        organizationData.name,
+        box.name,
+        version.versionNumber,
+        provider.name,
         architecture.name
       );
 
@@ -173,7 +173,12 @@ const _delete = async (req, res) => {
     await provider.destroy();
 
     // Delete the provider's directory
-    const providerPath = getSecureBoxPath(organization, boxId, versionNumber, providerName);
+    const providerPath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      provider.name
+    );
     fs.rm(providerPath, { recursive: true, force: true }, err => {
       if (err) {
         log.app.info(`Could not delete the provider directory: ${err}`);

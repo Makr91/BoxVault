@@ -9,7 +9,9 @@ import db from '../app/models/index.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
+import { join } from 'path';
 import { update } from '../app/controllers/box/update.js';
+import { getSecureBoxPath } from '../app/utils/paths.js';
 import configLoader from '../app/utils/config-loader.js';
 import { hashServiceAccountToken } from '../app/utils/serviceAccountAuth.js';
 import { log } from '../app/utils/Logger.js';
@@ -924,38 +926,39 @@ describe('Box API', () => {
       await db.box.destroy({ where: { name: 'existing-dir-box' } });
     });
 
-    it('should handle directory rename when target exists during update', async () => {
+    it('should refuse a rename onto a directory holding entries before any write', async () => {
       const box = await db.box.create({
         ...boxData,
         name: 'rename-test',
         userId: user.id,
         organizationId: organization.id,
       });
-
-      // Mock fs to simulate existing target directory
-      // We need to mock existsSync to return true for both old and new paths to trigger the cleanup logic
-      // Use a safer mock that calls original implementation for other paths
-      const originalExistsSync = fs.existsSync;
-      jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        const p = String(pathArg);
-        if (p.includes('rename-test') || p.includes('renamed-box')) {
-          return true;
-        }
-        return originalExistsSync(pathArg);
-      });
-      const rmSpy = jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
+      const oldDir = getSecureBoxPath(orgName, 'rename-test');
+      const newDir = getSecureBoxPath(orgName, 'renamed-box');
+      fs.mkdirSync(oldDir, { recursive: true });
+      fs.mkdirSync(newDir, { recursive: true });
+      fs.writeFileSync(join(newDir, 'keep.txt'), 'keep');
+      const rmSpy = jest.spyOn(fs, 'rmSync');
+      const renameSpy = jest.spyOn(fs, 'renameSync');
 
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/rename-test`)
         .set('x-access-token', authToken)
         .send({ name: 'renamed-box' });
 
-      expect(res.statusCode).toBe(200);
-      expect(rmSpy).toHaveBeenCalled();
-      expect(renameSpy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: orgName } }),
+      ]);
+      expect(rmSpy).not.toHaveBeenCalled();
+      expect(renameSpy).not.toHaveBeenCalled();
+      expect(fs.existsSync(join(newDir, 'keep.txt'))).toBe(true);
+      expect(fs.existsSync(oldDir)).toBe(true);
+      await box.reload();
+      expect(box.name).toBe('rename-test');
 
+      fs.rmSync(oldDir, { recursive: true, force: true });
+      fs.rmSync(newDir, { recursive: true, force: true });
       await box.destroy();
     });
 
@@ -1883,44 +1886,36 @@ describe('Box API', () => {
       expect(Array.isArray(res.body)).toBe(true);
     });
 
-    it('should handle directory rename collision during update', async () => {
+    it('should replace an empty target directory during update', async () => {
       const box = await db.box.create({
         ...boxData,
         name: `collision-test-${uniqueId}`,
         userId: user.id,
         organizationId: organization.id,
       });
-
-      // Mock fs to simulate BOTH old and new directories existing
-      const originalExistsSync = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        const p = String(pathArg);
-        if (p.includes('collision-test') || p.includes('collision-box')) {
-          return true;
-        }
-        return originalExistsSync(pathArg);
-      });
-
-      const rmSpy = jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      const mkdirSpy = jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
+      const newName = `collision-box-${uniqueId}`;
+      const oldDir = getSecureBoxPath(orgName, box.name);
+      const newDir = getSecureBoxPath(orgName, newName);
+      fs.mkdirSync(oldDir, { recursive: true });
+      fs.writeFileSync(join(oldDir, 'keep.txt'), 'keep');
+      fs.mkdirSync(newDir, { recursive: true });
+      const rmSpy = jest.spyOn(fs, 'rmSync');
+      const rmdirSpy = jest.spyOn(fs, 'rmdirSync');
 
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${box.name}`)
         .set('x-access-token', authToken)
-        .send({ name: `collision-box-${uniqueId}` });
+        .send({ name: newName });
 
       expect(res.statusCode).toBe(200);
-      // This ensures we hit the if (fs.existsSync(newFilePath)) block
-      expect(rmSpy).toHaveBeenCalled();
-      expect(renameSpy).toHaveBeenCalled();
+      expect(res.body.name).toBe(newName);
+      expect(rmSpy).not.toHaveBeenCalled();
+      expect(rmdirSpy).toHaveBeenCalledWith(newDir);
+      expect(fs.existsSync(join(newDir, 'keep.txt'))).toBe(true);
+      expect(fs.existsSync(oldDir)).toBe(false);
 
-      existsSpy.mockRestore();
-      rmSpy.mockRestore();
-      renameSpy.mockRestore();
-      mkdirSpy.mockRestore();
-
-      await box.destroy();
+      fs.rmSync(newDir, { recursive: true, force: true });
+      await db.box.destroy({ where: { id: box.id } });
     });
 
     it('should handle race condition where new directory disappears before rename', async () => {

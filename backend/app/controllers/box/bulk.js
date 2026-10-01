@@ -3,7 +3,7 @@ import { getSecureBoxPath } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
 import { VISIBILITY_CHANGES, cascadeBeneath, wordsBeneath } from '../../utils/orgMembership.js';
-const { box: Box } = db;
+const { box: Box, organization: Organization } = db;
 
 /**
  * @swagger
@@ -88,7 +88,6 @@ const { box: Box } = db;
  *                 enum: [not_found, forbidden, internal]
  */
 const bulk = async (req, res) => {
-  const { organization } = req.params;
   const { action, names, recursive } = req.body;
   const errors = [];
   let processed = 0;
@@ -104,8 +103,9 @@ const bulk = async (req, res) => {
     }
     if (action === 'delete') {
       await Box.destroy({ where: { id: box.id } });
+      const organizationData = await Organization.findByPk(box.organizationId);
       try {
-        await fs.promises.rm(getSecureBoxPath(organization, name), {
+        await fs.promises.rm(getSecureBoxPath(organizationData.name, box.name), {
           recursive: true,
           force: true,
         });

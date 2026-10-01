@@ -10,7 +10,7 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { renameDirectory } from '../../../utils/paths.js';
+import { isOccupiedTarget, renameDirectory } from '../../../utils/paths.js';
 import {
   getSecureDownloadPath,
   ownWords,
@@ -184,16 +184,27 @@ const bulk = async (req, res) => {
     if (widerThanParent(release, target)) {
       return 'forbidden';
     }
-    await release.update({ downloadId: target.id });
-    const oldFilePath = getSecureDownloadPath(organization, download.name, release.versionNumber);
-    const newFilePath = getSecureDownloadPath(organization, target.name, release.versionNumber);
+    const oldFilePath = getSecureDownloadPath(
+      organizationData.name,
+      download.name,
+      release.versionNumber
+    );
+    const newFilePath = getSecureDownloadPath(
+      organizationData.name,
+      target.name,
+      release.versionNumber
+    );
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return 'conflict';
+    }
     if (fs.existsSync(oldFilePath)) {
       renameDirectory(oldFilePath, newFilePath);
       await renameStoragePaths(
-        storagePathFor(organization, download.name, release.versionNumber),
-        storagePathFor(organization, target.name, release.versionNumber)
+        storagePathFor(organizationData.name, download.name, release.versionNumber),
+        storagePathFor(organizationData.name, target.name, release.versionNumber)
       );
     }
+    await release.update({ downloadId: target.id });
     return null;
   };
 
@@ -216,10 +227,10 @@ const bulk = async (req, res) => {
       await removeDownloadFiles(files);
       await release.destroy();
       try {
-        await fs.promises.rm(getSecureDownloadPath(organization, download.name, versionNumber), {
-          recursive: true,
-          force: true,
-        });
+        await fs.promises.rm(
+          getSecureDownloadPath(organizationData.name, download.name, release.versionNumber),
+          { recursive: true, force: true }
+        );
       } catch (err) {
         log.app.info(`Could not delete the release directory: ${err}`);
       }

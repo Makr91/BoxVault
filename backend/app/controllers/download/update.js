@@ -3,7 +3,7 @@ import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem } from '../../utils/problem.js';
 import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
-import { renameDirectory } from '../../utils/paths.js';
+import { isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
 import {
   getSecureDownloadPath,
   isReservedProductName,
@@ -128,8 +128,6 @@ const update = async (req, res) => {
     notes_url: notesUrl,
     icon_url: iconUrl,
   } = body;
-  const oldFilePath = getSecureDownloadPath(organization, name);
-  const newFilePath = getSecureDownloadPath(organization, updatedName || name);
 
   try {
     const download = await Download.findOne({
@@ -154,13 +152,14 @@ const update = async (req, res) => {
       });
     }
 
-    if (updatedName && updatedName !== name) {
-      if (isReservedProductName(updatedName)) {
+    const finalName = updatedName || download.name;
+    if (finalName !== download.name) {
+      if (isReservedProductName(finalName)) {
         return conflict(res, req, '/name', 'reserved');
       }
       const existingDownload = await Download.findOne({
         where: {
-          name: updatedName,
+          name: finalName,
           organizationId: req.organizationId,
           id: { [Op.ne]: download.id },
         },
@@ -170,21 +169,24 @@ const update = async (req, res) => {
       }
     }
 
+    const organizationData = await Organization.findByPk(download.organizationId);
+    const oldFilePath = getSecureDownloadPath(organizationData.name, download.name);
+    const newFilePath = getSecureDownloadPath(organizationData.name, finalName);
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/name', organization);
+    }
     if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
       renameDirectory(oldFilePath, newFilePath);
       await renameStoragePaths(
-        storagePathFor(organization, name),
-        storagePathFor(organization, updatedName)
+        storagePathFor(organizationData.name, download.name),
+        storagePathFor(organizationData.name, finalName)
       );
-    }
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
     }
 
     const wasPublished = download.published;
 
     const updatedDownload = await download.update({
-      name: updatedName || name,
+      name: finalName,
       description: description !== undefined ? description : download.description,
       details: linkOf(details, download.details),
       published: published !== undefined ? published : download.published,
@@ -203,7 +205,6 @@ const update = async (req, res) => {
     );
 
     if (updatedDownload.published && !wasPublished) {
-      const organizationData = await Organization.findByPk(updatedDownload.organizationId);
       notifyDownloadPublished(organizationData, updatedDownload);
     }
 

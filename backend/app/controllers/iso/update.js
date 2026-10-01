@@ -100,7 +100,7 @@ const update = async (req, res) => {
       return problem(res, req, { status: 404, type: 'not-found', title: req.__('isos.notFound') });
     }
 
-    if (updatedName && updatedName !== name) {
+    if (updatedName && updatedName !== iso.name) {
       const existingIso = await ISO.findOne({
         where: {
           name: updatedName,
@@ -116,7 +116,7 @@ const update = async (req, res) => {
     const wasPublished = iso.published;
 
     const updatedIso = await iso.update({
-      name: updatedName || name,
+      name: updatedName || iso.name,
       description: description !== undefined ? description : iso.description,
       published: published !== undefined ? published : iso.published,
       isPublic: isPublic !== undefined ? isPublic : iso.isPublic,

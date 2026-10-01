@@ -171,10 +171,8 @@ export const findOne = async (req, res) => {
   const { organization, name } = req.params;
   // Get auth info either from vagrantHandler or x-access-token
   let authConfig;
-  let appConfig;
   try {
     authConfig = configLoader.loadConfig('auth');
-    appConfig = configLoader.loadConfig('app');
   } catch (e) {
     log.error.error(`Failed to load configuration: ${e.message}`);
     return problem(res, req, { status: 500, type: 'internal', title: 'Configuration error' });
@@ -270,7 +268,7 @@ export const findOne = async (req, res) => {
     let response;
     if (req.isVagrantRequest) {
       // Format response for Vagrant metadata request
-      const baseUrl = appConfig.boxvault.origin;
+      const baseUrl = configLoader.getOrigin(req.hostname);
       // Always use the requested name from vagrantInfo
       // Use the requested name from vagrantInfo if available, otherwise construct it
       const requestedName = req.vagrantInfo?.requestedName || `${organization}/${name}`;

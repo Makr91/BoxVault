@@ -1,12 +1,11 @@
 // update.js
-import fs from 'fs';
-import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
+import { getSecureBoxPath, isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import { parseBoxContentFields } from './helpers.js';
 import { cascadeBeneath, visibilityOf, wordsBeneath } from '../../utils/orgMembership.js';
 import db from '../../models/index.js';
-const { box: Box, Sequelize } = db;
+const { box: Box, organization: Organization, Sequelize } = db;
 const { Op } = Sequelize;
 
 /**
@@ -130,8 +129,6 @@ export const update = async (req, res) => {
     workflow_file,
     cicd_url,
   } = req.body;
-  const oldFilePath = getSecureBoxPath(organization, name);
-  const newFilePath = getSecureBoxPath(organization, updatedName || name);
 
   const { errors: contentErrors, fields: contentFields } = parseBoxContentFields(req.body);
   if (contentErrors.length > 0) {
@@ -171,10 +168,11 @@ export const update = async (req, res) => {
       });
     }
 
-    if (updatedName && updatedName !== name) {
+    const finalName = updatedName || box.name;
+    if (finalName !== box.name) {
       const existingBox = await Box.findOne({
         where: {
-          name: updatedName,
+          name: finalName,
           organizationId: req.organizationId,
           id: { [Op.ne]: box.id },
         },
@@ -184,13 +182,16 @@ export const update = async (req, res) => {
       }
     }
 
-    renameDirectory(oldFilePath, newFilePath);
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
+    const organizationData = await Organization.findByPk(box.organizationId);
+    const oldFilePath = getSecureBoxPath(organizationData.name, box.name);
+    const newFilePath = getSecureBoxPath(organizationData.name, finalName);
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/name', organization);
     }
+    renameDirectory(oldFilePath, newFilePath);
 
     const updatedBox = await box.update({
-      name: updatedName || name,
+      name: finalName,
       description: description !== undefined ? description : box.description,
       published: published !== undefined ? published : box.published,
       isPublic: is_public !== undefined ? is_public : box.isPublic,

@@ -18,6 +18,21 @@ const MISSING_TITLES = {
   patch: 'downloads.patches.notFound',
 };
 
+const fileNameTaken = async (file, fileName, patch, targetPatch) => {
+  const renaming = Boolean(fileName) && fileName !== file.fileName;
+  if (!renaming && targetPatch.id === patch.id) {
+    return false;
+  }
+  const sameName = await DownloadFile.findOne({
+    where: {
+      fileName: fileName || file.fileName,
+      downloadPatchId: { [Op.in]: renaming ? [patch.id, targetPatch.id] : [targetPatch.id] },
+      id: { [Op.ne]: file.id },
+    },
+  });
+  return Boolean(sameName);
+};
+
 /**
  * @swagger
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/{key}:
@@ -115,7 +130,7 @@ const MISSING_TITLES = {
  *       404:
  *         description: Organization, product, release, patch, file or target not found
  *       409:
- *         description: A file with the key already exists for the patch it would sit in
+ *         description: A file with the key or the file name already exists for the patch it would sit in
  *         content:
  *           application/problem+json:
  *             schema:
@@ -183,6 +198,10 @@ const update = async (req, res) => {
       if (existingFile) {
         return conflict(res, req, '/key', target.patch.name);
       }
+    }
+
+    if (await fileNameTaken(file, fileName, patch, target.patch)) {
+      return conflict(res, req, '/file_name', target.patch.name);
     }
 
     const updatePayload = {};

@@ -1,4 +1,4 @@
-import { loadConfig } from '../../../utils/config-loader.js';
+import { getOrigin, loadConfig } from '../../../utils/config-loader.js';
 import { generateDownloadToken } from '../../../utils/auth.js';
 import { log } from '../../../utils/Logger.js';
 import { problem } from '../../../utils/problem.js';
@@ -66,7 +66,6 @@ const getDownloadLink = async (req, res) => {
   const { userId, isServiceAccount, serviceAccountId } = req;
 
   try {
-    const appConfig = loadConfig('app');
     const authConfig = loadConfig('auth');
 
     const { download, release, patch: patchData, file } = req.entities;
@@ -101,7 +100,7 @@ const getDownloadLink = async (req, res) => {
       authConfig.auth?.jwt?.download_link_expiry || '1h'
     );
 
-    const downloadUrl = `${appConfig.boxvault.api_url}/organization/${organization}/download/${name}/release/${versionNumber}/patch/${patch}/file/${file.key}/download?token=${downloadToken}`;
+    const downloadUrl = `${getOrigin(req.hostname)}/api/organization/${organization}/download/${name}/release/${versionNumber}/patch/${patch}/file/${file.key}/download?token=${downloadToken}`;
 
     return res.status(200).json({ download_url: downloadUrl });
   } catch (err) {

@@ -1086,11 +1086,13 @@ describe('Provider API', () => {
     });
 
     it('delete should log error if fs.rm fails (delete.js)', async () => {
-      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1 });
+      jest.spyOn(db.organization, 'findOne').mockResolvedValue({ id: 1, name: orgName });
+      jest.spyOn(db.box, 'findOne').mockResolvedValue({ id: 1, userId: 1, name: boxName });
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
-      jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1 });
-      jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 1, destroy: jest.fn() });
+      jest.spyOn(db.versions, 'findOne').mockResolvedValue({ id: 1, versionNumber: '1.0.0' });
+      jest
+        .spyOn(db.providers, 'findOne')
+        .mockResolvedValue({ id: 1, name: 'test-provider', destroy: jest.fn() });
       jest.spyOn(db.architectures, 'findAll').mockResolvedValue([]);
 
       // Mock fs.rm to call callback with error
@@ -1102,13 +1104,17 @@ describe('Provider API', () => {
 
       await deleteProviderController(req, res);
 
+      expect(res.status).not.toHaveBeenCalled();
       expect(res.send).toHaveBeenCalled(); // Should succeed despite FS error
     });
 
     // update.js coverage
     it('update should answer 409 when the new name is taken (update.js)', async () => {
       jest.spyOn(db.UserOrg, 'findUserOrgRole').mockResolvedValue({ role: 'owner' });
-      jest.spyOn(db.providers, 'findOne').mockResolvedValue({ id: 2, name: 'new-name' });
+      jest
+        .spyOn(db.providers, 'findOne')
+        .mockResolvedValueOnce({ id: 1, name: 'test-provider' })
+        .mockResolvedValueOnce({ id: 2, name: 'new-name' });
 
       req.body.name = 'new-name';
 

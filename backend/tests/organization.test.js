@@ -446,36 +446,92 @@ describe('Organization API', () => {
       await fsErrOrg.destroy();
     });
 
-    it('should clean up old directory if it remains after rename', async () => {
+    it('should refuse a rename onto a directory holding entries before any write', async () => {
       const cleanupOrg = await db.organization.create({ name: `Cleanup-${uniqueId}` });
       const newName = `CleanupUpdated-${uniqueId}`;
-
-      const originalExists = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string' && pathArg.includes(cleanupOrg.name)) {
-          return true;
-        }
-        if (typeof pathArg === 'string' && pathArg.includes(newName)) {
-          return true;
-        }
-        return originalExists(pathArg);
-      });
-
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      const rmdirSpy = jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
+      const oldPath = getSecureBoxPath(cleanupOrg.name);
+      const newPath = getSecureBoxPath(newName);
+      fs.mkdirSync(oldPath, { recursive: true });
+      fs.mkdirSync(newPath, { recursive: true });
+      fs.writeFileSync(path.join(newPath, 'test.txt'), 'content');
+      const rmSpy = jest.spyOn(fs, 'rmSync');
+      const renameSpy = jest.spyOn(fs, 'renameSync');
 
       const res = await request(app)
         .put(`/api/organization/${cleanupOrg.name}`)
         .set('x-access-token', adminToken)
         .send({ organization: newName });
 
-      expect(res.statusCode).toBe(200);
-      expect(rmdirSpy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/organization',
+          rule: 'unique',
+          params: { scope: 'global' },
+        }),
+      ]);
+      expect(rmSpy).not.toHaveBeenCalled();
+      expect(renameSpy).not.toHaveBeenCalled();
+      expect(fs.existsSync(path.join(newPath, 'test.txt'))).toBe(true);
+      await cleanupOrg.reload();
+      expect(cleanupOrg.name).toBe(`Cleanup-${uniqueId}`);
 
-      existsSpy.mockRestore();
+      rmSpy.mockRestore();
       renameSpy.mockRestore();
-      rmdirSpy.mockRestore();
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      fs.rmSync(newPath, { recursive: true, force: true });
       await cleanupOrg.destroy();
+    });
+
+    it('should replace an empty directory and move the stored download paths on rename', async () => {
+      const movingOrg = await db.organization.create({ name: `Moving-${uniqueId}` });
+      const newName = `Moved-${uniqueId}`;
+      const oldPath = getSecureBoxPath(movingOrg.name);
+      const newPath = getSecureBoxPath(newName);
+      fs.mkdirSync(path.join(oldPath, 'downloads', 'tool', '1.0', 'release'), { recursive: true });
+      fs.writeFileSync(path.join(oldPath, 'downloads', 'tool', '1.0', 'release', 'a.bin'), 'a');
+      fs.mkdirSync(newPath, { recursive: true });
+      const product = await db.download.create({
+        name: 'tool',
+        organizationId: movingOrg.id,
+        userId: adminUser.id,
+      });
+      const release = await db.downloadReleases.create({
+        versionNumber: '1.0',
+        downloadId: product.id,
+      });
+      const patch = await db.downloadPatches.create({
+        name: 'release',
+        downloadReleaseId: release.id,
+      });
+      const file = await db.downloadFiles.create({
+        key: 'a',
+        fileName: 'a.bin',
+        fileSize: 1,
+        original: true,
+        storagePath: `${movingOrg.name}/downloads/tool/1.0/release/a.bin`,
+        downloadPatchId: patch.id,
+      });
+      const rmdirSpy = jest.spyOn(fs, 'rmdirSync');
+
+      const res = await request(app)
+        .put(`/api/organization/${movingOrg.name}`)
+        .set('x-access-token', adminToken)
+        .send({ organization: newName });
+
+      expect(res.statusCode).toBe(200);
+      expect(rmdirSpy).toHaveBeenCalledWith(newPath);
+      expect(fs.existsSync(oldPath)).toBe(false);
+      expect(
+        fs.existsSync(path.join(newPath, 'downloads', 'tool', '1.0', 'release', 'a.bin'))
+      ).toBe(true);
+      await file.reload();
+      expect(file.storagePath).toBe(`${newName}/downloads/tool/1.0/release/a.bin`);
+
+      rmdirSpy.mockRestore();
+      fs.rmSync(newPath, { recursive: true, force: true });
+      await product.destroy();
+      await movingOrg.destroy();
     });
 
     it('should update organization name when directory does not exist', async () => {

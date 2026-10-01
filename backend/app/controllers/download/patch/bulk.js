@@ -134,7 +134,6 @@ const patchValues = values => {
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { organization } = req.params;
   const { action, names, recursive, values } = req.body;
   const { organizationData, downloadData: download, releaseData: release } = req;
 
@@ -193,8 +192,13 @@ const bulk = async (req, res) => {
     if (widerThanParent(patch, target.release)) {
       return 'forbidden';
     }
-    await relocatePatch(organization, patch, { download, release }, target);
-    return null;
+    const relocated = await relocatePatch(
+      organizationData.name,
+      patch,
+      { download, release },
+      target
+    );
+    return relocated ? null : 'conflict';
   };
 
   const row = async patchName => {
@@ -210,7 +214,12 @@ const bulk = async (req, res) => {
       await patch.destroy();
       try {
         await fs.promises.rm(
-          getSecureDownloadPath(organization, download.name, release.versionNumber, patchName),
+          getSecureDownloadPath(
+            organizationData.name,
+            download.name,
+            release.versionNumber,
+            patch.name
+          ),
           { recursive: true, force: true }
         );
       } catch (err) {

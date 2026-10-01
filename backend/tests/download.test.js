@@ -588,6 +588,60 @@ describe('Download API', () => {
       await db.download.destroy({ where: { name: 'renamed-product', organizationId: org.id } });
     });
 
+    it('should refuse a rename onto a directory holding entries before any write', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'keep-me' })
+        .expect(201);
+      fs.mkdirSync(getSecureDownloadPath(orgName, 'occupied', '1.0'), { recursive: true });
+      fs.writeFileSync(getSecureDownloadPath(orgName, 'occupied', '1.0', 'a.bin'), 'a');
+
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/download/keep-me`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'occupied', description: 'changed' });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/name', rule: 'unique', params: { scope: orgName } }),
+      ]);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'occupied', '1.0', 'a.bin'))).toBe(true);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'keep-me'))).toBe(true);
+      const row = await db.download.findOne({ where: { name: 'keep-me', organizationId: org.id } });
+      expect(row.description).not.toBe('changed');
+
+      fs.rmSync(getSecureDownloadPath(orgName, 'occupied'), { recursive: true, force: true });
+      await row.destroy();
+    });
+
+    it('should replace an empty directory on rename and create none on a plain update', async () => {
+      await request(app)
+        .post(`/api/organization/${orgName}/download`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'move-me' })
+        .expect(201);
+      fs.writeFileSync(getSecureDownloadPath(orgName, 'move-me', 'a.bin'), 'a');
+      fs.mkdirSync(getSecureDownloadPath(orgName, 'moved-here'), { recursive: true });
+
+      const res = await request(app)
+        .put(`/api/organization/${orgName}/download/move-me`)
+        .set('x-access-token', ownerToken)
+        .send({ name: 'moved-here' });
+      expect(res.statusCode).toBe(200);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'moved-here', 'a.bin'))).toBe(true);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'move-me'))).toBe(false);
+
+      fs.rmSync(getSecureDownloadPath(orgName, 'moved-here'), { recursive: true, force: true });
+      const plain = await request(app)
+        .put(`/api/organization/${orgName}/download/moved-here`)
+        .set('x-access-token', ownerToken)
+        .send({ description: 'no directory' });
+      expect(plain.statusCode).toBe(200);
+      expect(fs.existsSync(getSecureDownloadPath(orgName, 'moved-here'))).toBe(false);
+
+      await db.download.destroy({ where: { name: 'moved-here', organizationId: org.id } });
+    });
+
     it('should update with an empty body and answer 404 for an unknown product', async () => {
       const res = await request(app).put(productBase).set('x-access-token', memberToken).send();
       expect(res.statusCode).toBe(200);

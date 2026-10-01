@@ -6,6 +6,7 @@ import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
 
 const Box = db.box;
+const Organization = db.organization;
 
 const boxNotFound = (req, res) =>
   problem(res, req, { status: 404, type: 'not-found', title: req.__('boxes.boxNotFound') });
@@ -63,7 +64,7 @@ const boxNotFound = (req, res) =>
  *               $ref: '#/components/schemas/Problem'
  */
 const deleteBox = async (req, res) => {
-  const { organization, name } = req.params;
+  const { name } = req.params;
 
   try {
     // Find the box first to check ownership
@@ -93,7 +94,8 @@ const deleteBox = async (req, res) => {
 
     if (deleted) {
       // Delete the box's directory
-      const boxPath = getSecureBoxPath(organization, name);
+      const organizationData = await Organization.findByPk(box.organizationId);
+      const boxPath = getSecureBoxPath(organizationData.name, box.name);
       try {
         await fs.promises.rm(boxPath, { recursive: true, force: true });
       } catch (err) {

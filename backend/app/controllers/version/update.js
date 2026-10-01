@@ -1,5 +1,5 @@
 // update.js
-import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
+import { getSecureBoxPath, isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -88,7 +88,7 @@ const { Op } = Sequelize;
  *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
-  const { organization, boxId, versionNumber } = req.params;
+  const { versionNumber } = req.params;
   const {
     version_number: newVersionNumber,
     description,
@@ -97,9 +97,6 @@ export const update = async (req, res) => {
     deprecation_reason: deprecationReason,
     recursive,
   } = req.body;
-  const oldFilePath = getSecureBoxPath(organization, boxId, versionNumber);
-  // Use the new version number for the path if it's provided, otherwise use the old one.
-  const newFilePath = getSecureBoxPath(organization, boxId, newVersionNumber || versionNumber);
 
   try {
     // Organization and Box are already verified and attached by attachBox middleware
@@ -129,9 +126,10 @@ export const update = async (req, res) => {
       });
     }
 
-    if (newVersionNumber && newVersionNumber !== versionNumber) {
+    const finalVersionNumber = newVersionNumber || version.versionNumber;
+    if (finalVersionNumber !== version.versionNumber) {
       const existingVersion = await Version.findOne({
-        where: { versionNumber: newVersionNumber, boxId: box.id, id: { [Op.ne]: version.id } },
+        where: { versionNumber: finalVersionNumber, boxId: box.id, id: { [Op.ne]: version.id } },
       });
       if (existingVersion) {
         return conflict(res, req, '/version_number', box.name);
@@ -167,14 +165,20 @@ export const update = async (req, res) => {
       return refuse(res, req, [wider]);
     }
 
+    const oldFilePath = getSecureBoxPath(organizationData.name, box.name, version.versionNumber);
+    // Use the new version number for the path if it's provided, otherwise use the old one.
+    const newFilePath = getSecureBoxPath(organizationData.name, box.name, finalVersionNumber);
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/version_number', box.name);
+    }
+    renameDirectory(oldFilePath, newFilePath);
+
     const updated = await version.update(updatePayload);
     await cascadeBeneath('version', [version.id], wordsBeneath(visibility, recursive === true));
 
     if (updated) {
-      renameDirectory(oldFilePath, newFilePath);
-
       const updatedVersion = await Version.findOne({
-        where: { versionNumber: newVersionNumber || versionNumber, boxId: box.id },
+        where: { versionNumber: finalVersionNumber, boxId: box.id },
       });
 
       // Fan out the deprecation to the org's notification hub (externally

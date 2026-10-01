@@ -79,20 +79,19 @@ import { safeUnlink, safeRm } from '../../utils/fsHelper.js';
  *               $ref: '#/components/schemas/Problem'
  */
 const remove = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
   const fileName = `vagrant.box`;
-  const basefilePath = getSecureBoxPath(
-    organization,
-    boxId,
-    versionNumber,
-    providerName,
-    architectureName
-  );
-  const filePath = join(basefilePath, fileName);
 
   try {
     // Entities are pre-loaded by verifyBoxFilePath middleware
-    const { organization: organizationData, box, architecture } = req.entities;
+    const { organization: organizationData, box, version, provider, architecture } = req.entities;
+    const basefilePath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      provider.name,
+      architecture.name
+    );
+    const filePath = join(basefilePath, fileName);
 
     // Check if user owns the box OR has admin/owner role
     const membership = await resolveOrgMembership(req, organizationData.id);

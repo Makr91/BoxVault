@@ -61,8 +61,6 @@ const { versions: Version } = db;
  *               $ref: '#/components/schemas/Problem'
  */
 export const deleteAllByBox = async (req, res) => {
-  const { organization, boxId } = req.params;
-
   try {
     // Organization and Box are already verified and attached by verifyVersion middleware
     const { organizationData, boxData: box } = req;
@@ -84,7 +82,7 @@ export const deleteAllByBox = async (req, res) => {
     });
 
     if (deleted) {
-      const boxPath = getSecureBoxPath(organization, boxId);
+      const boxPath = getSecureBoxPath(organizationData.name, box.name);
       fs.rm(boxPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the box directory: ${err}`);

@@ -1351,11 +1351,10 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken);
     });
 
-    it('should handle target directory exists before rename (update.js line 190)', async () => {
+    it('should refuse a rename onto a directory holding entries before any write', async () => {
       const oldName = 'target-exists-old';
       const newName = 'target-exists-new';
 
-      // Create architecture
       await request(app)
         .post(
           `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture`
@@ -1363,23 +1362,25 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken)
         .send({ name: oldName });
 
-      // Mock fs operations to simulate target exists
-      const originalExistsSync = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string') {
-          if (pathArg.includes(oldName)) {
-            return true;
-          }
-          if (pathArg.includes(newName)) {
-            return true;
-          }
-        }
-        return originalExistsSync(pathArg);
-      });
-
-      const rmSyncSpy = jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-      const rmdirSpy = jest.spyOn(fs, 'rmdirSync').mockImplementation(() => {});
+      const oldPath = getSecureBoxPath(
+        orgName,
+        testBox.name,
+        testVersion.version_number,
+        testProvider.name,
+        oldName
+      );
+      const newPath = getSecureBoxPath(
+        orgName,
+        testBox.name,
+        testVersion.version_number,
+        testProvider.name,
+        newName
+      );
+      fs.mkdirSync(oldPath, { recursive: true });
+      fs.mkdirSync(newPath, { recursive: true });
+      fs.writeFileSync(`${newPath}/vagrant.box`, 'keep');
+      const rmSyncSpy = jest.spyOn(fs, 'rmSync');
+      const renameSpy = jest.spyOn(fs, 'renameSync');
 
       const res = await request(app)
         .put(
@@ -1388,19 +1389,26 @@ describe('Architecture API', () => {
         .set('x-access-token', authToken)
         .send({ name: newName });
 
-      expect(res.statusCode).toBe(200);
-      expect(rmSyncSpy).toHaveBeenCalled(); // Target cleanup
-      expect(renameSpy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/name',
+          rule: 'unique',
+          params: { scope: testProvider.name },
+        }),
+      ]);
+      expect(rmSyncSpy).not.toHaveBeenCalled();
+      expect(renameSpy).not.toHaveBeenCalled();
+      expect(fs.existsSync(`${newPath}/vagrant.box`)).toBe(true);
 
-      existsSpy.mockRestore();
       rmSyncSpy.mockRestore();
       renameSpy.mockRestore();
-      rmdirSpy.mockRestore();
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      fs.rmSync(newPath, { recursive: true, force: true });
 
-      // Cleanup
       await request(app)
         .delete(
-          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${newName}`
+          `/api/organization/${orgName}/box/${testBox.name}/version/${testVersion.version_number}/provider/${testProvider.name}/architecture/${oldName}`
         )
         .set('x-access-token', authToken);
     });

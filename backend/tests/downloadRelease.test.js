@@ -287,6 +287,45 @@ describe('Download release API', () => {
     expect(conflict.statusCode).toBe(409);
   });
 
+  it('should refuse a rename onto a directory holding entries before any write', async () => {
+    fs.mkdirSync(getSecureDownloadPath(orgName, productName, '14.5.3', 'release'), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      getSecureDownloadPath(orgName, productName, '14.5.3', 'release', 'a.bin'),
+      'a'
+    );
+
+    const res = await request(app)
+      .put(`${productBase}/release/14.5.2`)
+      .set('x-access-token', ownerToken)
+      .send({ version_number: '14.5.3', description: 'changed' });
+    expect(res.statusCode).toBe(409);
+    expect(res.body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/version_number',
+        rule: 'unique',
+        params: { scope: productName },
+      }),
+    ]);
+    expect(
+      fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5.3', 'release', 'a.bin'))
+    ).toBe(true);
+    expect(fs.existsSync(getSecureDownloadPath(orgName, productName, '14.5.2'))).toBe(true);
+    const product = await db.download.findOne({
+      where: { name: productName, organizationId: org.id },
+    });
+    const release = await db.downloadReleases.findOne({
+      where: { versionNumber: '14.5.2', downloadId: product.id },
+    });
+    expect(release.description).not.toBe('changed');
+
+    fs.rmSync(getSecureDownloadPath(orgName, productName, '14.5.3'), {
+      recursive: true,
+      force: true,
+    });
+  });
+
   it('should move a release to another product of the organization with its files', async () => {
     const targetName = 'notes-designer';
     await request(app)

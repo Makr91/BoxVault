@@ -49,7 +49,7 @@ const {
  *         description: Internal server error
  */
 const deleteRelease = async (req, res) => {
-  const { organization, versionNumber } = req.params;
+  const { versionNumber } = req.params;
 
   try {
     const { organizationData, downloadData: download } = req;
@@ -86,7 +86,11 @@ const deleteRelease = async (req, res) => {
     await removeDownloadFiles(files);
     await release.destroy();
 
-    const releasePath = getSecureDownloadPath(organization, download.name, versionNumber);
+    const releasePath = getSecureDownloadPath(
+      organizationData.name,
+      download.name,
+      release.versionNumber
+    );
     fs.rm(releasePath, { recursive: true, force: true }, err => {
       if (err) {
         log.app.info(`Could not delete the release directory: ${err}`);

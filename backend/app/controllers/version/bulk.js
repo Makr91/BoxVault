@@ -87,7 +87,6 @@ const { versions: Version } = db;
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { organization, boxId } = req.params;
   const { action, names, deprecation_reason: deprecationReason, recursive } = req.body;
   const { organizationData, boxData: box } = req;
 
@@ -111,10 +110,10 @@ const bulk = async (req, res) => {
     if (action === 'delete') {
       await Version.destroy({ where: { id: version.id } });
       try {
-        await fs.promises.rm(getSecureBoxPath(organization, boxId, versionNumber), {
-          recursive: true,
-          force: true,
-        });
+        await fs.promises.rm(
+          getSecureBoxPath(organizationData.name, box.name, version.versionNumber),
+          { recursive: true, force: true }
+        );
       } catch (err) {
         log.app.info(`Could not delete the version directory: ${err}`);
       }

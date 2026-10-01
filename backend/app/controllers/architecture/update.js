@@ -1,6 +1,5 @@
 // update.js
-import fs from 'fs';
-import { getSecureBoxPath, renameDirectory } from '../../utils/paths.js';
+import { getSecureBoxPath, isOccupiedTarget, renameDirectory } from '../../utils/paths.js';
 import { log } from '../../utils/Logger.js';
 import { conflict, problem, refuse } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -129,26 +128,11 @@ const { Op } = Sequelize;
  *               $ref: '#/components/schemas/Problem'
  */
 export const update = async (req, res) => {
-  const { organization, boxId, versionNumber, providerName, architectureName } = req.params;
+  const { architectureName } = req.params;
   const { name, description, default_box: defaultBox, recursive } = req.body;
 
-  const oldFilePath = getSecureBoxPath(
-    organization,
-    boxId,
-    versionNumber,
-    providerName,
-    architectureName
-  );
-  const newFilePath = getSecureBoxPath(
-    organization,
-    boxId,
-    versionNumber,
-    providerName,
-    name || architectureName
-  );
-
   try {
-    const { organizationData, boxData: box, providerData: provider } = req;
+    const { organizationData, boxData: box, versionData: version, providerData: provider } = req;
 
     // Check if user owns the box OR has admin/owner role
     const membership = await resolveOrgMembership(req, organizationData.id);
@@ -173,9 +157,10 @@ export const update = async (req, res) => {
       });
     }
 
-    if (name && name !== architectureName) {
+    const finalName = name || current.name;
+    if (finalName !== current.name) {
       const existingArchitecture = await Architecture.findOne({
-        where: { name, providerId: provider.id, id: { [Op.ne]: current.id } },
+        where: { name: finalName, providerId: provider.id, id: { [Op.ne]: current.id } },
       });
       if (existingArchitecture) {
         return conflict(res, req, '/name', provider.name);
@@ -190,10 +175,24 @@ export const update = async (req, res) => {
       }
     }
 
-    renameDirectory(oldFilePath, newFilePath);
-    if (!fs.existsSync(newFilePath)) {
-      fs.mkdirSync(newFilePath, { recursive: true });
+    const oldFilePath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      provider.name,
+      current.name
+    );
+    const newFilePath = getSecureBoxPath(
+      organizationData.name,
+      box.name,
+      version.versionNumber,
+      provider.name,
+      finalName
+    );
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/name', provider.name);
     }
+    renameDirectory(oldFilePath, newFilePath);
 
     const updatePayload = {};
     if (name) {

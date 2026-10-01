@@ -121,7 +121,6 @@ const MISSING_TITLES = {
  *         description: Internal server error
  */
 const update = async (req, res) => {
-  const { organization, patch: patchName } = req.params;
   const {
     name,
     kind,
@@ -162,9 +161,9 @@ const update = async (req, res) => {
       });
     }
     const moving = target.release.id !== release.id;
-    const finalName = name || patchName;
+    const finalName = name || patchData.name;
 
-    if (moving || finalName !== patchName) {
+    if (moving || finalName !== patchData.name) {
       const existingPatch = await DownloadPatch.findOne({
         where: {
           name: finalName,
@@ -201,16 +200,19 @@ const update = async (req, res) => {
       return refuse(res, req, [wider]);
     }
 
-    await patchData.update(updatePayload);
-    await cascadeBeneath('patch', [patchData.id], wordsBeneath(visibility, recursive === true));
-
-    const updatedPatch = await relocatePatch(
-      organization,
+    const relocated = await relocatePatch(
+      organizationData.name,
       patchData,
       { download, release },
       target,
       finalName
     );
+    if (!relocated) {
+      return conflict(res, req, '/name', target.release.versionNumber);
+    }
+
+    const updatedPatch = await patchData.update(updatePayload);
+    await cascadeBeneath('patch', [patchData.id], wordsBeneath(visibility, recursive === true));
 
     return res.send(updatedPatch);
   } catch (err) {

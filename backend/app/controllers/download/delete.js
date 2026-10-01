@@ -8,6 +8,7 @@ const {
   downloadReleases: DownloadRelease,
   downloadPatches: DownloadPatch,
   downloadFiles: DownloadFile,
+  organization: Organization,
 } = db;
 
 /**
@@ -43,7 +44,7 @@ const {
  *         description: Internal server error
  */
 const deleteDownload = async (req, res) => {
-  const { organization, name } = req.params;
+  const { name } = req.params;
 
   try {
     const download = await Download.findOne({
@@ -88,7 +89,8 @@ const deleteDownload = async (req, res) => {
     await removeDownloadFiles(files);
     await download.destroy();
 
-    const downloadPath = getSecureDownloadPath(organization, name);
+    const organizationData = await Organization.findByPk(download.organizationId);
+    const downloadPath = getSecureDownloadPath(organizationData.name, download.name);
     try {
       await fs.promises.rm(downloadPath, { recursive: true, force: true });
     } catch (err) {

@@ -1,6 +1,11 @@
 import fs from 'fs';
 import { dirname, join } from 'path';
-import { getSecureBoxPath, getStorageRoot, renameDirectory } from '../../utils/paths.js';
+import {
+  getSecureBoxPath,
+  getStorageRoot,
+  isOccupiedTarget,
+  renameDirectory,
+} from '../../utils/paths.js';
 import { ensureDirSync } from '../../utils/fsHelper.js';
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
@@ -515,13 +520,14 @@ const relocateFile = async (organization, file, target) => {
 /**
  * Move one patch row under another release, renaming it on the way when a
  * name is given: its directory moves with it and every stored path beneath it
- * follows.
+ * follows. A target directory holding entries leaves the row and the
+ * directory untouched.
  * @param {string} organization - Organization name
  * @param {Object} patch - The download_patch row
  * @param {{download: Object, release: Object}} from - The rows it sits under
  * @param {{download: Object, release: Object}} target - The rows it moves under
  * @param {string} [name] - Its new name, the current one when absent
- * @returns {Promise<Object>} The updated row
+ * @returns {Promise<Object|null>} The updated row, or null when the target directory holds entries
  */
 const relocatePatch = async (organization, patch, from, target, name = patch.name) => {
   const oldName = patch.name;
@@ -537,7 +543,9 @@ const relocatePatch = async (organization, patch, from, target, name = patch.nam
     target.release.versionNumber,
     name
   );
-  const updated = await patch.update({ name, downloadReleaseId: target.release.id });
+  if (isOccupiedTarget(oldFilePath, newFilePath)) {
+    return null;
+  }
   if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
     renameDirectory(oldFilePath, newFilePath);
     await renameStoragePaths(
@@ -545,7 +553,7 @@ const relocatePatch = async (organization, patch, from, target, name = patch.nam
       storagePathFor(organization, target.download.name, target.release.versionNumber, name)
     );
   }
-  return updated;
+  return patch.update({ name, downloadReleaseId: target.release.id });
 };
 
 export {

@@ -5,6 +5,7 @@ import db from '../app/models/index.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
+import { join } from 'path';
 import { getSecureBoxPath } from '../app/utils/paths.js';
 
 describe('Version API', () => {
@@ -511,7 +512,7 @@ describe('Version API', () => {
   });
 
   describe('Update Version Number (Target Exists)', () => {
-    it('should update version number even if target directory already exists', async () => {
+    it('should update version number when the target directory exists empty', async () => {
       const vNum = '5.1.0';
       const newVNum = '5.1.1';
       await request(app)
@@ -519,20 +520,12 @@ describe('Version API', () => {
         .set('x-access-token', authToken)
         .send({ version_number: vNum, description: 'To Rename Target Exists' });
 
-      // Mock fs.existsSync to return true for the new path (simulating it exists)
-      // and true for old path (so it tries to rename)
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string' && (pathArg.includes(vNum) || pathArg.includes(newVNum))) {
-          return true;
-        }
-        return false;
-      });
-
-      // Mock renameSync to succeed without doing anything
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-
-      // Mock rmdirSync for cleanup
-      const rmdirSpy = jest.spyOn(fs, 'rmdirSync').mockImplementation(() => {});
+      const oldPath = getSecureBoxPath(orgName, testBox.name, vNum);
+      const newPath = getSecureBoxPath(orgName, testBox.name, newVNum);
+      fs.mkdirSync(oldPath, { recursive: true });
+      fs.writeFileSync(join(oldPath, 'keep.txt'), 'keep');
+      fs.mkdirSync(newPath, { recursive: true });
+      const rmdirSpy = jest.spyOn(fs, 'rmdirSync');
 
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${testBox.name}/version/${vNum}`)
@@ -540,10 +533,12 @@ describe('Version API', () => {
         .send({ version_number: newVNum });
 
       expect(res.statusCode).toBe(200);
+      expect(rmdirSpy).toHaveBeenCalledWith(newPath);
+      expect(fs.existsSync(join(newPath, 'keep.txt'))).toBe(true);
+      expect(fs.existsSync(oldPath)).toBe(false);
 
-      existsSpy.mockRestore();
-      renameSpy.mockRestore();
       rmdirSpy.mockRestore();
+      fs.rmSync(newPath, { recursive: true, force: true });
     });
   });
 
@@ -858,53 +853,49 @@ describe('Version API', () => {
       // we will skip forcing this specific line coverage if it requires invasive mocking.
     });
 
-    it('should clean up target directory if it exists before rename', async () => {
+    it('should refuse a rename onto a directory holding entries before any write', async () => {
       const vNum = 'cleanup.1.0';
       const newVNum = 'cleanup.1.1';
 
-      // Create version
       await request(app)
         .post(`/api/organization/${orgName}/box/${testBox.name}/version`)
         .set('x-access-token', authToken)
         .send({ version_number: vNum, description: 'Cleanup Test' });
 
-      // Mock fs.existsSync to return true for both old and new paths
-      // This simulates:
-      // 1. oldFilePath exists (so we enter the rename block)
-      // 2. newFilePath exists (so we enter the cleanup block)
-      const originalExistsSync = fs.existsSync;
-      const existsSpy = jest.spyOn(fs, 'existsSync').mockImplementation(pathArg => {
-        if (typeof pathArg === 'string') {
-          if (pathArg.includes(vNum)) {
-            return true;
-          }
-          if (pathArg.includes(newVNum)) {
-            return true;
-          }
-        }
-        return originalExistsSync(pathArg);
-      });
-
-      // Mock rmSync to verify it's called
-      const rmSyncSpy = jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
-
-      // Mock renameSync to avoid actual FS errors
-      const renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
+      const oldPath = getSecureBoxPath(orgName, testBox.name, vNum);
+      const newPath = getSecureBoxPath(orgName, testBox.name, newVNum);
+      fs.mkdirSync(oldPath, { recursive: true });
+      fs.mkdirSync(newPath, { recursive: true });
+      fs.writeFileSync(join(newPath, 'keep.txt'), 'keep');
+      const rmSyncSpy = jest.spyOn(fs, 'rmSync');
+      const renameSpy = jest.spyOn(fs, 'renameSync');
 
       const res = await request(app)
         .put(`/api/organization/${orgName}/box/${testBox.name}/version/${vNum}`)
         .set('x-access-token', authToken)
         .send({ version_number: newVNum });
 
-      expect(res.statusCode).toBe(200);
-      expect(rmSyncSpy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/version_number',
+          rule: 'unique',
+          params: { scope: testBox.name },
+        }),
+      ]);
+      expect(rmSyncSpy).not.toHaveBeenCalled();
+      expect(renameSpy).not.toHaveBeenCalled();
+      expect(fs.existsSync(join(newPath, 'keep.txt'))).toBe(true);
+      const boxRow = await db.box.findOne({ where: { name: testBox.name } });
+      expect(
+        await db.versions.findOne({ where: { versionNumber: vNum, boxId: boxRow.id } })
+      ).not.toBeNull();
 
-      existsSpy.mockRestore();
       rmSyncSpy.mockRestore();
       renameSpy.mockRestore();
-
-      // Cleanup DB
-      await db.versions.destroy({ where: { versionNumber: newVNum } });
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      fs.rmSync(newPath, { recursive: true, force: true });
+      await db.versions.destroy({ where: { versionNumber: vNum } });
     });
 
     it('findAll should handle database errors', async () => {

@@ -8,7 +8,7 @@ import {
   decodeProtectedHeader,
   jwtVerify,
 } from 'jose';
-import { loadConfig } from './config-loader.js';
+import { getOrigin, loadConfig } from './config-loader.js';
 import { log } from './Logger.js';
 import { verifySessionToken } from './auth.js';
 import { findProviderByIssuer } from './oidcProviders.js';
@@ -65,7 +65,7 @@ const issuerOf = token => {
 };
 
 const htuOf = req => {
-  const { origin } = new URL(loadConfig('app').boxvault.origin);
+  const { origin } = new URL(getOrigin(req.hostname));
   const [path] = req.originalUrl.split('?');
   return `${origin}${path}`;
 };

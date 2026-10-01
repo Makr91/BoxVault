@@ -316,6 +316,50 @@ describe('Download patch API', () => {
     expect(asMember.statusCode).toBe(403);
   });
 
+  it('should refuse a rename onto a directory holding entries before any write', async () => {
+    fs.mkdirSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'FP3'), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      getSecureDownloadPath(orgName, productName, releaseNumber, 'FP3', 'a.bin'),
+      'a'
+    );
+
+    const res = await request(app)
+      .put(`${releaseBase}/patch/FP2`)
+      .set('x-access-token', ownerToken)
+      .send({ name: 'FP3', description: 'changed' });
+    expect(res.statusCode).toBe(409);
+    expect(res.body.errors).toEqual([
+      expect.objectContaining({
+        pointer: '/name',
+        rule: 'unique',
+        params: { scope: releaseNumber },
+      }),
+    ]);
+    expect(
+      fs.existsSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'FP3', 'a.bin'))
+    ).toBe(true);
+    expect(fs.existsSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'FP2'))).toBe(
+      true
+    );
+    const product = await db.download.findOne({
+      where: { name: productName, organizationId: org.id },
+    });
+    const release = await db.downloadReleases.findOne({
+      where: { versionNumber: releaseNumber, downloadId: product.id },
+    });
+    const patch = await db.downloadPatches.findOne({
+      where: { name: 'FP2', downloadReleaseId: release.id },
+    });
+    expect(patch.description).toBe('Fix Pack 1');
+
+    fs.rmSync(getSecureDownloadPath(orgName, productName, releaseNumber, 'FP3'), {
+      recursive: true,
+      force: true,
+    });
+  });
+
   it('should move a patch to another release with its directory', async () => {
     const productBase = `/api/organization/${orgName}/download/${productName}`;
     await request(app)

@@ -53,6 +53,7 @@ const mockConfigLoader = {
     skip_successful_requests: false,
     skip_failed_requests: false,
   }),
+  getOrigin: jest.fn().mockReturnValue('http://localhost:3000'),
   saveConfig: jest.fn(),
 };
 

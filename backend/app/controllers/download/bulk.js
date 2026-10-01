@@ -122,7 +122,6 @@ const productValues = values => {
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { organization } = req.params;
   const { action, names, recursive, values } = req.body;
   const errors = [];
   let processed = 0;
@@ -165,8 +164,9 @@ const bulk = async (req, res) => {
         .flatMap(patch => patch.files);
       await removeDownloadFiles(files);
       await download.destroy();
+      const organizationData = await Organization.findByPk(download.organizationId);
       try {
-        await fs.promises.rm(getSecureDownloadPath(organization, name), {
+        await fs.promises.rm(getSecureDownloadPath(organizationData.name, download.name), {
           recursive: true,
           force: true,
         });

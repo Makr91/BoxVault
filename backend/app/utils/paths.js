@@ -67,14 +67,23 @@ const isSameEntry = (first, second) => {
   return Boolean(left && right && left.ino === right.ino && left.dev === right.dev);
 };
 
+const isOccupiedTarget = (oldPath, newPath) =>
+  oldPath !== newPath &&
+  fs.existsSync(oldPath) &&
+  fs.existsSync(newPath) &&
+  !isSameEntry(oldPath, newPath) &&
+  fs.readdirSync(newPath).length > 0;
+
 /**
  * Move a storage directory to a new name: a rename differing only in case goes
  * through a temporary name so a case-insensitive filesystem keeps the
- * contents, any other target is replaced. A missing source or an unchanged
+ * contents, an empty target is replaced, and a target holding entries is
+ * never removed, the move throwing instead. A missing source or an unchanged
  * name does nothing.
  * @param {string} oldPath - The directory's current path
  * @param {string} newPath - The directory's new path
  * @returns {void}
+ * @throws {Error} When the target holds entries
  */
 const renameDirectory = (oldPath, newPath) => {
   if (oldPath === newPath || !fs.existsSync(oldPath)) {
@@ -88,9 +97,16 @@ const renameDirectory = (oldPath, newPath) => {
       fs.renameSync(staging, newPath);
       return;
     }
-    fs.rmSync(newPath, { recursive: true, force: true });
+    fs.rmdirSync(newPath);
   }
   fs.renameSync(oldPath, newPath);
 };
 
-export { getStorageRoot, getSecureBoxPath, isPathInside, isSameEntry, renameDirectory };
+export {
+  getStorageRoot,
+  getSecureBoxPath,
+  isPathInside,
+  isSameEntry,
+  isOccupiedTarget,
+  renameDirectory,
+};

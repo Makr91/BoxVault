@@ -88,7 +88,6 @@ const { providers: Provider, architectures: Architecture } = db;
  *               $ref: '#/components/schemas/Problem'
  */
 const bulk = async (req, res) => {
-  const { organization, boxId, versionNumber } = req.params;
   const { action, names, recursive } = req.body;
   const { organizationData, boxData: box, versionData: version } = req;
 
@@ -125,7 +124,13 @@ const bulk = async (req, res) => {
       architectures.map(async architecture => {
         try {
           await fs.promises.rm(
-            getSecureBoxPath(organization, boxId, versionNumber, providerName, architecture.name),
+            getSecureBoxPath(
+              organizationData.name,
+              box.name,
+              version.versionNumber,
+              provider.name,
+              architecture.name
+            ),
             { recursive: true, force: true }
           );
         } catch (err) {
@@ -136,10 +141,10 @@ const bulk = async (req, res) => {
     );
     await provider.destroy();
     try {
-      await fs.promises.rm(getSecureBoxPath(organization, boxId, versionNumber, providerName), {
-        recursive: true,
-        force: true,
-      });
+      await fs.promises.rm(
+        getSecureBoxPath(organizationData.name, box.name, version.versionNumber, provider.name),
+        { recursive: true, force: true }
+      );
     } catch (err) {
       log.app.info(`Could not delete the provider directory: ${err}`);
     }

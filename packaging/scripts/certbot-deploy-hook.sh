@@ -30,7 +30,6 @@ if [ -z "$CONFIG_DIR" ]; then
 fi
 
 CONFIG_FILE="$CONFIG_DIR/app.config.yaml"
-SSL_DIR="$CONFIG_DIR/ssl"
 
 log_info "Using BoxVault config directory: $CONFIG_DIR"
 
@@ -88,6 +87,34 @@ fi
 
 log_info "BoxVault domain detected: $DOMAIN"
 
+SSL_PATHS=$(python3 -c "
+import yaml
+import sys
+
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = yaml.safe_load(f)
+    print(config['ssl']['cert_path'])
+    print(config['ssl']['key_path'])
+except KeyError as e:
+    print(f'Configuration key not found: {e}', file=sys.stderr)
+    sys.exit(1)
+except yaml.YAMLError as e:
+    print(f'YAML parsing error: {e}', file=sys.stderr)
+    sys.exit(1)
+")
+
+CERT_PATH=$(echo "$SSL_PATHS" | sed -n 1p)
+KEY_PATH=$(echo "$SSL_PATHS" | sed -n 2p)
+
+if [ -z "$CERT_PATH" ] || [ -z "$KEY_PATH" ]; then
+    log_error "Failed to read ssl.cert_path and ssl.key_path from BoxVault configuration"
+    exit 1
+fi
+
+log_info "BoxVault certificate path: $CERT_PATH"
+log_info "BoxVault key path: $KEY_PATH"
+
 # Step 4: Check if Let's Encrypt certificates exist for this domain
 CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
 
@@ -104,23 +131,25 @@ fi
 log_info "Found Let's Encrypt certificates for domain $DOMAIN"
 
 # Step 5: Create BoxVault SSL directory if it doesn't exist
-if [ ! -d "$SSL_DIR" ]; then
-    log_info "Creating BoxVault SSL directory: $SSL_DIR"
-    mkdir -p "$SSL_DIR"
-fi
+for SSL_DIR in "$(dirname "$CERT_PATH")" "$(dirname "$KEY_PATH")"; do
+    if [ ! -d "$SSL_DIR" ]; then
+        log_info "Creating BoxVault SSL directory: $SSL_DIR"
+        mkdir -p "$SSL_DIR"
+    fi
+done
 
 # Step 6: Copy certificates to BoxVault SSL directory
 log_info "Copying certificates to BoxVault SSL directory"
 
-cp "$CERT_DIR/fullchain.pem" "$SSL_DIR/public.crt"
-cp "$CERT_DIR/privkey.pem" "$SSL_DIR/private.key"
+cp "$CERT_DIR/fullchain.pem" "$CERT_PATH"
+cp "$CERT_DIR/privkey.pem" "$KEY_PATH"
 
 # Step 7: Set proper ownership and permissions
 log_info "Setting proper ownership and permissions"
 
-chown boxvault:boxvault "$SSL_DIR/public.crt" "$SSL_DIR/private.key"
-chmod 644 "$SSL_DIR/public.crt"
-chmod 600 "$SSL_DIR/private.key"
+chown boxvault:boxvault "$CERT_PATH" "$KEY_PATH"
+chmod 644 "$CERT_PATH"
+chmod 600 "$KEY_PATH"
 
 log_info "Certificates copied successfully"
 

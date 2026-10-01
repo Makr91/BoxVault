@@ -73,7 +73,7 @@ const versionNotFound = (req, res) =>
  *               $ref: '#/components/schemas/Problem'
  */
 const _delete = async (req, res) => {
-  const { organization, boxId, versionNumber } = req.params;
+  const { versionNumber } = req.params;
 
   try {
     // Organization and Box are already verified and attached by verifyVersion middleware
@@ -104,7 +104,7 @@ const _delete = async (req, res) => {
     });
 
     if (deleted) {
-      const versionPath = getSecureBoxPath(organization, boxId, versionNumber);
+      const versionPath = getSecureBoxPath(organizationData.name, box.name, version.versionNumber);
       fs.rm(versionPath, { recursive: true, force: true }, err => {
         if (err) {
           log.app.info(`Could not delete the version directory: ${err}`);

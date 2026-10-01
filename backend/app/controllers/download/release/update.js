@@ -10,7 +10,7 @@ import {
   wordsBeneath,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
-import { renameDirectory } from '../../../utils/paths.js';
+import { isOccupiedTarget, renameDirectory } from '../../../utils/paths.js';
 import { getSecureDownloadPath, renameStoragePaths, storagePathFor } from '../helpers.js';
 const { download: Download, downloadReleases: DownloadRelease, Sequelize } = db;
 const { Op } = Sequelize;
@@ -157,7 +157,7 @@ const releasePayload = body => {
  *         description: Internal server error
  */
 const update = async (req, res) => {
-  const { organization, versionNumber } = req.params;
+  const { versionNumber } = req.params;
   const { version_number: newVersionNumber } = req.body;
 
   try {
@@ -183,10 +183,10 @@ const update = async (req, res) => {
     if (!target) {
       return undefined;
     }
-    const finalVersionNumber = newVersionNumber || versionNumber;
+    const finalVersionNumber = newVersionNumber || release.versionNumber;
     const moving = target.id !== download.id;
 
-    if (moving || finalVersionNumber !== versionNumber) {
+    if (moving || finalVersionNumber !== release.versionNumber) {
       const existingRelease = await DownloadRelease.findOne({
         where: {
           versionNumber: finalVersionNumber,
@@ -205,6 +205,27 @@ const update = async (req, res) => {
       return refuse(res, req, [wider]);
     }
 
+    const oldFilePath = getSecureDownloadPath(
+      organizationData.name,
+      download.name,
+      release.versionNumber
+    );
+    const newFilePath = getSecureDownloadPath(
+      organizationData.name,
+      target.name,
+      finalVersionNumber
+    );
+    if (isOccupiedTarget(oldFilePath, newFilePath)) {
+      return conflict(res, req, '/version_number', target.name);
+    }
+    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
+      renameDirectory(oldFilePath, newFilePath);
+      await renameStoragePaths(
+        storagePathFor(organizationData.name, download.name, release.versionNumber),
+        storagePathFor(organizationData.name, target.name, finalVersionNumber)
+      );
+    }
+
     const updatedRelease = await release.update({
       ...payload,
       ...(moving ? { downloadId: target.id } : {}),
@@ -214,16 +235,6 @@ const update = async (req, res) => {
       [release.id],
       wordsBeneath(visibilityOf(req.body), req.body.recursive === true)
     );
-
-    const oldFilePath = getSecureDownloadPath(organization, download.name, versionNumber);
-    const newFilePath = getSecureDownloadPath(organization, target.name, finalVersionNumber);
-    if (oldFilePath !== newFilePath && fs.existsSync(oldFilePath)) {
-      renameDirectory(oldFilePath, newFilePath);
-      await renameStoragePaths(
-        storagePathFor(organization, download.name, versionNumber),
-        storagePathFor(organization, target.name, finalVersionNumber)
-      );
-    }
 
     return res.send(updatedRelease);
   } catch (err) {
