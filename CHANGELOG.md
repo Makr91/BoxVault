@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.106.0](https://github.com/Makr91/BoxVault/compare/v0.105.0...v0.106.0) (2026-10-01)
+
+
+### Features
+
+* SQLite and MariaDB behave alike and the schema upgrades itself ([08f294b](https://github.com/Makr91/BoxVault/commit/08f294bfe2235684bff53c3d698e6b13e2ea9150))
+
+
+### Bug Fixes
+
+* a bad Vagrant token is treated as no token ([1f4167b](https://github.com/Makr91/BoxVault/commit/1f4167b496f87ebcc12d8538b0aeb1cf94ac45ca))
+* bulk edits/moves and certbot updates ([7c1de7a](https://github.com/Makr91/BoxVault/commit/7c1de7aa0e9c4afb1942825787fc499a7b35d0f8))
+* bump nodemailer and refresh the backend lockfile for the brace-expansion, nodemailer, undici and ip-address advisories ([2e450c3](https://github.com/Makr91/BoxVault/commit/2e450c3f9f4d6490f0445c891430218442c14b84))
+
 ## [0.105.0](https://github.com/Makr91/BoxVault/compare/v0.104.2...v0.105.0) (2026-09-27)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "boxvault",
-  "version": "0.105.0",
+  "version": "0.106.0",
   "description": "BoxVault is a cloud-based storage solution for VM Templates and ISOs.",
   "private": true,
   "main": "backend/server.js",
@@ -28,7 +28,7 @@
     "format:fix": "prettier --write ."
   },
   "devDependencies": {
-    "prettier": "^3.9.8"
+    "prettier": "^3.9.9"
   },
   "overrides": {
     "shell-quote": "^1.9.0"
