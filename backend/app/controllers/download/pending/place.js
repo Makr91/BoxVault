@@ -15,6 +15,7 @@ import { ensureDirSync, safeRmdirSync } from '../../../utils/fsHelper.js';
 import { addressOf, recordFile } from '../../../middleware/uploadDownload.js';
 import {
   absolutePath,
+  fileNameInPatch,
   getPendingPath,
   getSecureDownloadPath,
   isReservedProductName,
@@ -209,6 +210,12 @@ const settleFileRow = async (file, patch, key, fileName, attributes, visibility)
  *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization or pending upload not found, or its bytes were never assembled
+ *       409:
+ *         description: Another file of the patch already carries the file name
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       422:
  *         description: A product name that is not a slug, a release or patch that is not an identifier, or a file member that breaks its rule
  *         content:
@@ -312,6 +319,10 @@ const place = async (req, res) => {
       .reduce((found, [parent]) => found || widerThanParent(visibility, parent), null);
     if (wider) {
       return refuse(res, req, [wider]);
+    }
+
+    if (patch && (await fileNameInPatch(patch.id, fileName, file?.id))) {
+      return conflict(res, req, '/file_name', patch.name);
     }
 
     if (!download) {

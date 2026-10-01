@@ -236,6 +236,20 @@ describe('Download file API', () => {
       expect(duplicate.body.errors).toEqual([
         expect.objectContaining({ pointer: '/key', rule: 'unique', params: { scope: patchName } }),
       ]);
+
+      const sameName = await request(app)
+        .post(`${patchBase}/file`)
+        .set('x-access-token', ownerToken)
+        .send({ key: 'linux-x64-copy', file_name: installerName });
+      expect(sameName.statusCode).toBe(409);
+      expect(sameName.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/file_name',
+          rule: 'unique',
+          params: { scope: patchName },
+        }),
+      ]);
+      expect(await db.downloadFiles.count({ where: { key: 'linux-x64-copy' } })).toBe(0);
     });
 
     it('should refuse a plain member and list the rows for a member', async () => {
@@ -289,6 +303,59 @@ describe('Download file API', () => {
       });
     });
 
+    it('should keep the stored bytes when a re-upload fails and replace them when one succeeds', async () => {
+      const storedPath = filePath(releaseNumber, patchName, installerName);
+      const tempDir = getSecureDownloadPath(
+        orgName,
+        productName,
+        releaseNumber,
+        patchName,
+        '.temp',
+        installerName
+      );
+
+      const failed = await uploadTo('linux-x64', ownerToken, Buffer.from(`broken-${uniqueId}`), {
+        'x-file-name': installerName,
+        'x-checksum': 'deadbeef',
+        'x-checksum-type': 'sha256',
+      });
+      expect(failed.statusCode).toBe(500);
+      expect(fs.readFileSync(storedPath)).toEqual(fileContent);
+      expect(fs.existsSync(tempDir)).toBe(false);
+
+      const replacement = Buffer.from(`replacement-${uniqueId}`);
+      const replaced = await uploadTo('linux-x64', ownerToken, replacement, {
+        'x-file-name': installerName,
+      });
+      expect(replaced.statusCode).toBe(200);
+      expect(fs.readFileSync(storedPath)).toEqual(replacement);
+      expect(fs.existsSync(tempDir)).toBe(false);
+
+      const restored = await uploadTo('linux-x64', ownerToken, fileContent, {
+        'x-file-name': installerName,
+      });
+      expect(restored.statusCode).toBe(200);
+      expect(fs.readFileSync(storedPath)).toEqual(fileContent);
+    });
+
+    it('should refuse a row carrying the file name of another row of the patch', async () => {
+      const twin = await uploadTo('linux-x64-twin', ownerToken, Buffer.from(`twin-${uniqueId}`), {
+        'x-file-name': installerName,
+      });
+      expect(twin.statusCode).toBe(409);
+      expect(twin.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/file_name',
+          rule: 'unique',
+          params: { scope: patchName },
+        }),
+      ]);
+      expect(await db.downloadFiles.count({ where: { key: 'linux-x64-twin' } })).toBe(0);
+      expect(fs.readFileSync(filePath(releaseNumber, patchName, installerName))).toEqual(
+        fileContent
+      );
+    });
+
     it('should verify a declared checksum and refuse a wrong one', async () => {
       const content = Buffer.from(`windows-installer-${uniqueId}`);
       const ok = await uploadTo('windows-x64', ownerToken, content, {
@@ -297,6 +364,17 @@ describe('Download file API', () => {
         'x-checksum-type': 'sha256',
       });
       expect(ok.statusCode).toBe(200);
+
+      const renamedOnto = await uploadTo('windows-x64', ownerToken, content, {
+        'x-file-name': installerName,
+      });
+      expect(renamedOnto.statusCode).toBe(409);
+      expect(renamedOnto.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/file_name', rule: 'unique' }),
+      ]);
+      expect(
+        fs.readFileSync(filePath(releaseNumber, patchName, 'Domino_14.5.1_Win_English.exe'))
+      ).toEqual(content);
 
       const bad = await uploadTo('bad-checksum', ownerToken, content, {
         'x-file-name': 'Domino_14.5.1_Win_Wrong.exe',

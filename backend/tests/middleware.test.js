@@ -220,7 +220,6 @@ const { sessionAuth } = await import('../app/middleware/sessionAuth.js');
 const { getOidcConfiguration } = await import('../app/auth/passport.js');
 const axios = (await import('axios')).default;
 const { atomicWriteFile, atomicWriteFileSync } = await import('../app/utils/atomic-file-writer.js');
-const { safeUnlink } = await import('../app/utils/fsHelper.js');
 
 describe('Middleware Tests', () => {
   beforeEach(() => {
@@ -278,6 +277,14 @@ describe('Middleware Tests', () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(mockDb.files.create).toHaveBeenCalled();
+      expect(mockFs.createWriteStream).toHaveBeenCalledWith(
+        expect.stringContaining('assembled'),
+        expect.any(Object)
+      );
+      expect(mockFs.renameSync).toHaveBeenCalledWith(
+        expect.stringContaining('assembled'),
+        expect.stringContaining('vagrant.box')
+      );
     });
 
     it('should successfully upload single file with valid checksum', async () => {
@@ -2786,33 +2793,39 @@ describe('Middleware Tests', () => {
       );
     });
 
-    it('uploadFile should cleanup incomplete file on specific errors', async () => {
+    it('uploadFile should remove only the temp upload on a size mismatch', async () => {
       delete req.headers['x-chunk-index'];
       delete req.headers['x-total-chunks'];
 
-      req.headers['content-length'] = '5242880'; // 5MB
-      // Mock statSync to return different size to trigger "size mismatch" error
-      mockFs.statSync.mockReturnValue({ size: 1048576 }); // 1MB
-
-      // Mock existsSync to return true for final path to trigger cleanup logic
+      req.headers['content-length'] = '5242880';
+      mockFs.statSync.mockReturnValue({ size: 1048576 });
       mockFs.existsSync.mockReturnValue(true);
 
       req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
-      expect(mockFs.unlink).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(mockFs.createWriteStream).toHaveBeenCalledWith(
+        expect.stringContaining('.temp'),
+        expect.any(Object)
+      );
+      expect(mockFsHelper.safeRmdirSync).toHaveBeenCalledWith(expect.stringContaining('.temp'));
+      expect(mockFs.renameSync).not.toHaveBeenCalled();
+      expect(mockFs.unlink).not.toHaveBeenCalled();
     });
 
-    it('uploadFile should cleanup on premature close error', async () => {
-      // Mock existsSync to return true for cleanup
+    it('uploadFile should leave the stored file untouched on a premature close', async () => {
       mockFs.existsSync.mockReturnValue(true);
 
       const uploadPromise = uploadFile(req, res);
       req.destroy(new Error('closed prematurely'));
       await uploadPromise;
 
-      expect(mockFs.unlink).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(mockFsHelper.safeRmdirSync).toHaveBeenCalledWith(expect.stringContaining('.temp'));
+      expect(mockFs.renameSync).not.toHaveBeenCalled();
+      expect(mockFs.unlink).not.toHaveBeenCalled();
     });
 
     it('uploadFile should handle race condition where version is missing during updateDatabase', async () => {
@@ -2880,26 +2893,21 @@ describe('Middleware Tests', () => {
       );
     });
 
-    it('uploadFile should handle cleanup error when file size mismatch occurs', async () => {
-      req.headers['content-length'] = '5242880'; // 5MB
-      mockFs.statSync.mockReturnValue({ size: 1048576 }); // 1MB. Diff = 4MB > 1MB tolerance
-      mockFs.existsSync.mockReturnValue(true); // File exists
-      safeUnlink
-        .mockImplementationOnce(() => {}) // First call in handleSingleUpload (succeeds/ignored)
-        .mockImplementationOnce(() => {
-          throw new Error('Unlink Error');
-        }); // Second call in uploadMiddleware catch (fails)
+    it('uploadFile should answer 500 when removing the temp upload fails', async () => {
+      req.headers['content-length'] = '5242880';
+      mockFs.statSync.mockReturnValue({ size: 1048576 });
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.rmdirSync.mockImplementationOnce(() => {
+        throw new Error('Rmdir Error');
+      });
 
       req.end(Buffer.from('content'));
 
       await uploadFile(req, res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      // Should log error but not crash
-      expect(mockLog.error.error).toHaveBeenCalledWith(
-        expect.stringMatching(/(?:Upload error:|Error cleaning up file:)/),
-        expect.any(Error)
-      );
+      expect(mockLog.error.error).toHaveBeenCalledWith('Upload error:', expect.any(Error));
+      expect(mockFs.renameSync).not.toHaveBeenCalled();
     });
 
     it('uploadFile should not send error response if headers already sent', async () => {

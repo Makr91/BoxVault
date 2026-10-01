@@ -240,6 +240,30 @@ describe('Download pending upload API', () => {
       expect(gone.statusCode).toBe(404);
     });
 
+    it('should refuse placing a file name another row of the patch carries and keep the upload', async () => {
+      const details = await dropWhole(memberToken, Buffer.from(`second-${uniqueId}`), 'test.nsf');
+      const res = await request(app)
+        .post(`${pendingBase}/${details.id}/place`)
+        .set('x-access-token', memberToken)
+        .send({ product: 'test-db', release: '1.0', patch: 'release', key: 'test-copy' });
+      expect(res.statusCode).toBe(409);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({
+          pointer: '/file_name',
+          rule: 'unique',
+          params: { scope: 'release' },
+        }),
+      ]);
+      expect(fs.existsSync(getPendingPath(orgName, details.id, 'test.nsf'))).toBe(true);
+      expect(
+        fs.readFileSync(getSecureDownloadPath(orgName, 'test-db', '1.0', 'release', 'test.nsf'))
+      ).toEqual(nsfContent);
+      await request(app)
+        .delete(`${pendingBase}/${details.id}`)
+        .set('x-access-token', memberToken)
+        .expect(204);
+    });
+
     it('should guess the words a richer file name gives', async () => {
       const details = await dropWhole(
         memberToken,

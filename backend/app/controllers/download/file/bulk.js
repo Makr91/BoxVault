@@ -7,7 +7,7 @@ import {
   widerThanParent,
 } from '../../../utils/orgMembership.js';
 import { problem } from '../../../utils/problem.js';
-import { relocateFile, removeDownloadFile, resolveTarget } from '../helpers.js';
+import { fileNameInPatch, relocateFile, removeDownloadFile, resolveTarget } from '../helpers.js';
 const { downloadFiles: DownloadFile, sequelize, Sequelize } = db;
 const { Op } = Sequelize;
 
@@ -40,7 +40,7 @@ const fileValues = values => {
  * /api/organization/{organization}/download/{name}/release/{versionNumber}/patch/{patch}/file/bulk:
  *   post:
  *     summary: One action across a selection of files of a patch
- *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row, named by its key or its file name, is isolated; a missing file is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the file wider than its patch with forbidden. `set` writes the given values (kind, platform, architecture, language, variant, source_url) on every named file. `move` moves every named file, with its bytes, to the patch `download`, `release` and `patch` name (each defaulting to the current one), the caller having to be allowed to write both products, a file whose key is taken there counted as conflict and one wider than the target patch as forbidden. A delete removes the row and its bytes in a transaction the way the single delete does, an original handing its bytes to one of its links first.
+ *     description: The product's owner, or an admin or owner of the organization, may act; a service account acts inside its own organization at its effective role. Each row, named by its key or its file name, is isolated; a missing file is counted as skipped and named in errors with not_found, a thrown row with internal, a visibility change that would set the file wider than its patch with forbidden. `set` writes the given values (kind, platform, architecture, language, variant, source_url) on every named file. `move` moves every named file, with its bytes, to the patch `download`, `release` and `patch` name (each defaulting to the current one), the caller having to be allowed to write both products, a file whose key or file name is taken there counted as conflict and one wider than the target patch as forbidden. A delete removes the row and its bytes in a transaction the way the single delete does, an original handing its bytes to one of its links first.
  *     tags: [Downloads]
  *     security:
  *       - JwtAuth: []
@@ -184,7 +184,7 @@ const bulk = async (req, res) => {
     const taken = await DownloadFile.findOne({
       where: { key: file.key, downloadPatchId: target.patch.id },
     });
-    if (taken) {
+    if (taken || (await fileNameInPatch(target.patch.id, file.fileName))) {
       return 'conflict';
     }
     if (widerThanParent(file, target.patch)) {

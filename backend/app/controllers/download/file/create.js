@@ -7,6 +7,7 @@ import {
   widerThanParent,
 } from '../../../utils/orgMembership.js';
 import { conflict, problem, refuse } from '../../../utils/problem.js';
+import { fileNameInPatch } from '../helpers.js';
 const { downloadFiles: DownloadFile } = db;
 
 /**
@@ -102,7 +103,7 @@ const { downloadFiles: DownloadFile } = db;
  *       404:
  *         description: Organization, product, release or patch not found
  *       409:
- *         description: A file with that key already exists for the patch
+ *         description: A file with that key or that file name already exists for the patch
  *         content:
  *           application/problem+json:
  *             schema:
@@ -147,6 +148,10 @@ const create = async (req, res) => {
     });
     if (existingFile) {
       return conflict(res, req, '/key', patch.name);
+    }
+
+    if (await fileNameInPatch(patch.id, fileName || key)) {
+      return conflict(res, req, '/file_name', patch.name);
     }
 
     const visibility = {

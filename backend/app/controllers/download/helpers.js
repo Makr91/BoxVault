@@ -308,6 +308,17 @@ const findOriginalByChecksum = (organizationId, checksum, excludeId) =>
     ],
   });
 
+const fileNameInPatch = async (patchId, fileName, exceptId = null) =>
+  Boolean(
+    await DownloadFile.findOne({
+      where: {
+        fileName,
+        downloadPatchId: patchId,
+        ...(exceptId ? { id: { [Op.ne]: exceptId } } : {}),
+      },
+    })
+  );
+
 const relink = (linkStoragePath, originalStoragePath) => {
   const linkPath = absolutePath(linkStoragePath);
   if (fs.lstatSync(linkPath, { throwIfNoEntry: false })) {
@@ -580,6 +591,7 @@ export {
   releasesWithinReach,
   withCounts,
   findOriginalByChecksum,
+  fileNameInPatch,
   promoteOriginal,
   removeDownloadFile,
   removeDownloadFiles,

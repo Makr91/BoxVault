@@ -13,7 +13,12 @@ import { conflict, problem, refuse } from '../../../utils/problem.js';
 import { getRulesDocument } from '../../../utils/rules.js';
 import { validateObject } from '../../../utils/validation.js';
 import { uploadDownloadFile } from '../../../middleware/uploadDownload.js';
-import { absolutePath, isReservedProductName, promoteOriginal } from '../helpers.js';
+import {
+  absolutePath,
+  fileNameInPatch,
+  isReservedProductName,
+  promoteOriginal,
+} from '../helpers.js';
 
 const {
   organization: Organization,
@@ -140,6 +145,31 @@ const levelsOf = (params, fileName) => {
     patchName: params.patch ?? 'release',
     key: params.key ?? fileName,
   };
+};
+
+/**
+ * The existing row an upload replaces: an original hands its bytes to a
+ * link first, a symlink at its path is dropped, and the query members and a
+ * new real file name are written onto the row.
+ * @param {Object} file - The download_file row
+ * @param {boolean} renaming - Whether x-file-name names a different real file name
+ * @param {string} fileName - The real file name
+ * @param {Object} members - The file members of the query
+ * @returns {Promise<Object>} The row
+ */
+const replacedFileRow = async (file, renaming, fileName, members) => {
+  if (file.storagePath) {
+    if (file.original) {
+      await promoteOriginal(file);
+    }
+    const existingPath = absolutePath(file.storagePath);
+    const stat = fs.lstatSync(existingPath, { throwIfNoEntry: false });
+    if (stat && stat.isSymbolicLink()) {
+      fs.unlinkSync(existingPath);
+    }
+  }
+  const changes = { ...members, ...(renaming ? { fileName } : {}) };
+  return Object.keys(changes).length > 0 ? file.update(changes) : file;
 };
 
 /**
@@ -396,6 +426,12 @@ const levelsOf = (params, fileName) => {
  *               $ref: '#/components/schemas/Problem'
  *       404:
  *         description: Organization not found
+ *       409:
+ *         description: Another file of the patch already carries the file name
+ *         content:
+ *           application/problem+json:
+ *             schema:
+ *               $ref: '#/components/schemas/Problem'
  *       413:
  *         description: File too large
  *         content:
@@ -508,6 +544,11 @@ const upload = (req, res) => {
       return refuse(res, req, [wider]);
     }
 
+    const renaming = Boolean(file && req.headers['x-file-name'] && file.fileName !== fileName);
+    if (patch && (!file || renaming) && (await fileNameInPatch(patch.id, fileName, file?.id))) {
+      return conflict(res, req, '/file_name', patch.name);
+    }
+
     if (!download) {
       download = await Download.create({
         name,
@@ -531,36 +572,18 @@ const upload = (req, res) => {
       });
     }
 
-    if (file) {
-      if (file.storagePath) {
-        if (file.original) {
-          await promoteOriginal(file);
-        }
-        const existingPath = absolutePath(file.storagePath);
-        const stat = fs.lstatSync(existingPath, { throwIfNoEntry: false });
-        if (stat && stat.isSymbolicLink()) {
-          fs.unlinkSync(existingPath);
-        }
-      }
-      const changes = { ...members };
-      if (req.headers['x-file-name'] && file.fileName !== fileName) {
-        changes.fileName = fileName;
-      }
-      if (Object.keys(changes).length > 0) {
-        file = await file.update(changes);
-      }
-    } else {
-      file = await DownloadFile.create({
-        key,
-        fileName,
-        ...FILE_DEFAULTS,
-        ...members,
-        ...visibility,
-        fileSize: 0,
-        original: true,
-        downloadPatchId: patch.id,
-      });
-    }
+    file = file
+      ? await replacedFileRow(file, renaming, fileName, members)
+      : await DownloadFile.create({
+          key,
+          fileName,
+          ...FILE_DEFAULTS,
+          ...members,
+          ...visibility,
+          fileSize: 0,
+          original: true,
+          downloadPatchId: patch.id,
+        });
 
     req.entities = { organization, download, release, patch, file };
 

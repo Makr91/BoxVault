@@ -1,4 +1,11 @@
-import { readdirSync, statSync, createWriteStream, createReadStream, symlinkSync } from 'fs';
+import {
+  readdirSync,
+  statSync,
+  createWriteStream,
+  createReadStream,
+  symlinkSync,
+  renameSync,
+} from 'fs';
 import { createHash } from 'crypto';
 import { Transform } from 'stream';
 import { pipeline } from 'stream/promises';
@@ -30,6 +37,7 @@ const CHECKSUM_ALGORITHMS = {
 };
 const NO_CHECKSUM_TYPE = 'null';
 const COUNT_PATTERN = /^\d+$/;
+const ASSEMBLED_FILE = 'assembled';
 
 const checksumAlgorithm = checksumType =>
   CHECKSUM_ALGORITHMS[String(checksumType).toLowerCase().replace('-', '')] || null;
@@ -125,7 +133,7 @@ const validateRequest = (req, isChunked, contentLength, maxFileSize) => {
   return null;
 };
 
-const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
+const mergeChunks = async (tempDir, assembledPath, totalChunks, contentLength) => {
   const chunks = readdirSync(tempDir).filter(f => f.startsWith('chunk-'));
 
   const sortedChunks = chunks
@@ -147,13 +155,13 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
     totalChunks,
     receivedChunks: chunks.length,
     tempDir,
-    finalPath,
+    assembledPath,
     totalSize: sortedChunks.reduce((size, chunk) => size + statSync(chunk.path).size, 0),
   });
 
-  ensureDirSync(dirname(finalPath));
+  ensureDirSync(dirname(assembledPath));
 
-  const writeStream = createWriteStream(finalPath, {
+  const writeStream = createWriteStream(assembledPath, {
     flags: 'w',
     encoding: 'binary',
     mode: 0o600,
@@ -210,7 +218,7 @@ const mergeChunks = async (tempDir, finalPath, totalChunks, contentLength) => {
   });
 
   log.app.info('Assembly completed:', {
-    finalPath,
+    assembledPath,
     assembledSize,
     expectedSize: contentLength || 'unknown',
   });
@@ -408,31 +416,26 @@ const handleChunkedUpload = async (
     });
 
     if (chunks.length === totalChunks) {
-      const finalSize = await mergeChunks(tempDir, finalPath, totalChunks, contentLength);
-
-      log.app.info('Cleaning up temp directory:', tempDir);
-      safeRmdirSync(tempDir);
+      const assembledPath = join(tempDir, ASSEMBLED_FILE);
+      const finalSize = await mergeChunks(tempDir, assembledPath, totalChunks, contentLength);
 
       if (finalSize > maxFileSize) {
-        await safeUnlink(finalPath);
         throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
       }
 
       const checksum = req.headers['x-checksum'];
       const checksumType = req.headers['x-checksum-type'];
       if (checksum || checksumType) {
-        let isValid;
-        try {
-          isValid = await verifyChecksum(finalPath, checksum, checksumType);
-        } catch (error) {
-          await safeUnlink(finalPath);
-          throw error;
-        }
+        const isValid = await verifyChecksum(assembledPath, checksum, checksumType);
         if (!isValid) {
-          await safeUnlink(finalPath);
           throw new Error('Checksum verification failed');
         }
       }
+
+      renameSync(assembledPath, finalPath);
+
+      log.app.info('Cleaning up temp directory:', tempDir);
+      safeRmdirSync(tempDir);
 
       const extra = await target.complete(finalSize, req.headers, finalPath);
 
@@ -595,6 +598,7 @@ const sweepStaleTempDirs = async () => {
 const handleSingleUpload = async (
   req,
   target,
+  tempDir,
   finalPath,
   contentLength,
   isChunked,
@@ -608,8 +612,9 @@ const handleSingleUpload = async (
     log.app.info(`Verifying checksum (${nodeAlgo}) inline for file: ${finalPath}`);
   }
   const hash = nodeAlgo ? createHash(nodeAlgo) : null;
+  const uploadPath = join(tempDir, ASSEMBLED_FILE);
 
-  const writeStream = createWriteStream(finalPath, {
+  const writeStream = createWriteStream(uploadPath, {
     flags: 'w',
     encoding: 'binary',
     mode: 0o600,
@@ -626,37 +631,39 @@ const handleSingleUpload = async (
     },
   });
 
+  let finalSize;
   try {
     await pipeline(req, hasher, writeStream);
+
+    finalSize = statSync(uploadPath).size;
+
+    if (!isChunked && !isNaN(contentLength)) {
+      const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
+      if (Math.abs(finalSize - contentLength) > maxDiff) {
+        throw new Error(
+          `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
+        );
+      }
+    }
+
+    if (finalSize > maxFileSize) {
+      throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
+    }
+
+    if (hash) {
+      const calculated = hash.digest('hex');
+      if (calculated !== expectedChecksum.toLowerCase()) {
+        throw new Error('Checksum verification failed');
+      }
+    }
+
+    renameSync(uploadPath, finalPath);
   } catch (error) {
-    await safeUnlink(finalPath);
+    safeRmdirSync(tempDir);
     throw error;
   }
 
-  const finalSize = statSync(finalPath).size;
-
-  if (!isChunked && !isNaN(contentLength)) {
-    const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
-    if (Math.abs(finalSize - contentLength) > maxDiff) {
-      await safeUnlink(finalPath);
-      throw new Error(
-        `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
-      );
-    }
-  }
-
-  if (finalSize > maxFileSize) {
-    await safeUnlink(finalPath);
-    throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
-  }
-
-  if (hash) {
-    const calculated = hash.digest('hex');
-    if (calculated !== expectedChecksum.toLowerCase()) {
-      await safeUnlink(finalPath);
-      throw new Error('Checksum verification failed');
-    }
-  }
+  safeRmdirSync(tempDir);
 
   const extra = await target.complete(finalSize, req.headers, finalPath);
 
@@ -713,7 +720,6 @@ const runUpload = async (req, res, target) => {
   req._body = true;
 
   const startTime = Date.now();
-  let finalPath;
 
   try {
     const maxFileSize = getMaxFileSize();
@@ -741,7 +747,7 @@ const runUpload = async (req, res, target) => {
 
     log.app.info('Creating upload directory:', { uploadDir });
     ensureDirSync(uploadDir);
-    finalPath = target.path;
+    const finalPath = target.path;
 
     const isMultipart =
       req.headers['x-chunk-index'] !== undefined || req.headers['x-total-chunks'] !== undefined;
@@ -749,13 +755,11 @@ const runUpload = async (req, res, target) => {
     const totalChunks = isMultipart ? Number(req.headers['x-total-chunks']) : NaN;
 
     const tempDir = join(uploadDir, '.temp', target.fileName);
-    if (isMultipart) {
-      if (chunkIndex === 0) {
-        await sweepStaleTempDirs();
-      }
-      log.app.info('Creating temp directory for chunks:', { tempDir });
-      ensureDirSync(tempDir);
+    if (isMultipart && chunkIndex === 0) {
+      await sweepStaleTempDirs();
     }
+    log.app.info('Creating temp directory:', { tempDir });
+    ensureDirSync(tempDir);
 
     log.app.info('=== STARTING DOWNLOAD FILE UPLOAD PROCESS ===', {
       fileName: target.fileName,
@@ -783,6 +787,7 @@ const runUpload = async (req, res, target) => {
       result = await handleSingleUpload(
         req,
         target,
+        tempDir,
         finalPath,
         contentLength,
         isChunked,
@@ -794,17 +799,6 @@ const runUpload = async (req, res, target) => {
     return res.status(200).json(result.response);
   } catch (error) {
     log.error.error('Download upload error:', error);
-
-    if (finalPath && safeExistsSync(finalPath)) {
-      if (error.message.includes('size mismatch') || error.message.includes('closed prematurely')) {
-        try {
-          await safeUnlink(finalPath);
-          log.app.info('Cleaned up incomplete file:', finalPath);
-        } catch (cleanupError) {
-          log.error.error('Error cleaning up file:', cleanupError);
-        }
-      }
-    }
 
     if (!res.headersSent) {
       return problem(res, req, {
