@@ -1,5 +1,10 @@
+import fs from 'fs';
+import path from 'path';
+import request from 'supertest';
+import app from '../server.js';
 import db from '../app/models/index.js';
 import externalUserHandler from '../app/auth/external-user-handler.js';
+import { getSecureBoxPath } from '../app/utils/paths.js';
 
 const ISSUER = 'https://claims-idp.example';
 const OTHER_FACE = 'https://claims-idp-face.example';
@@ -34,6 +39,7 @@ describe('External user handling from identity-provider claims', () => {
     externalUserHandler.syncOrganizationsFromClaim(account, { organizations }, issuer, db);
 
   beforeAll(async () => {
+    await global.testHelpers.waitForAppReady(app);
     localOrg = await db.organization.create({ name: `ClaimsLocal-${uniqueId}` });
     user = await db.user.create({
       username: `claims-user-${uniqueId}`,
@@ -188,6 +194,119 @@ describe('External user handling from identity-provider claims', () => {
       ).rejects.toThrow();
       expect(await orgByUuid(`delta-${uniqueId}`)).toBeNull();
       expect(await membershipOf(user, reservedUuid)).not.toBeNull();
+    });
+  });
+
+  describe('a rename at the identity provider', () => {
+    const renameUuid = `${uniqueId}-rename-uuid`;
+    const oldName = `Before-${uniqueId}`;
+    const newName = `After-${uniqueId}`;
+    let renamer;
+
+    beforeAll(async () => {
+      renamer = await db.user.create({
+        username: `claims-renamer-${uniqueId}`,
+        email: `claims-renamer-${uniqueId}@example.com`,
+        password: 'external',
+        verified: true,
+      });
+    });
+
+    it('should key the mirror on the claim uuid as its own uuid and carry its personal flag', async () => {
+      await sync(renamer, [
+        { uuid: renameUuid, name: `Before ${uniqueId}`, roles: ['owner'], personal: true },
+      ]);
+      const mirrored = await orgByUuid(renameUuid);
+      expect(mirrored.uuid).toBe(renameUuid);
+      expect(mirrored.personal).toBe(true);
+      expect(mirrored.name).toBe(oldName);
+    });
+
+    it('should rename the organization, move its storage and download paths, and free the old name', async () => {
+      const mirrored = await orgByUuid(renameUuid);
+      const oldPath = getSecureBoxPath(oldName);
+      const newPath = getSecureBoxPath(newName);
+      fs.mkdirSync(path.join(oldPath, 'downloads', 'tool', '1.0', 'release'), { recursive: true });
+      fs.writeFileSync(path.join(oldPath, 'downloads', 'tool', '1.0', 'release', 'a.bin'), 'a');
+      const product = await db.download.create({
+        name: 'tool',
+        organizationId: mirrored.id,
+        userId: renamer.id,
+      });
+      const release = await db.downloadReleases.create({
+        versionNumber: '1.0',
+        downloadId: product.id,
+      });
+      const patch = await db.downloadPatches.create({
+        name: 'release',
+        downloadReleaseId: release.id,
+      });
+      const file = await db.downloadFiles.create({
+        key: 'a',
+        fileName: 'a.bin',
+        fileSize: 1,
+        original: true,
+        storagePath: `${oldName}/downloads/tool/1.0/release/a.bin`,
+        downloadPatchId: patch.id,
+      });
+
+      await sync(renamer, [{ uuid: renameUuid, name: `After ${uniqueId}`, roles: ['owner'] }]);
+
+      await mirrored.reload();
+      expect(mirrored.name).toBe(newName);
+      expect(mirrored.display_name).toBe(`After ${uniqueId}`);
+      expect(mirrored.uuid).toBe(renameUuid);
+      expect(mirrored.personal).toBe(false);
+      expect(fs.existsSync(oldPath)).toBe(false);
+      expect(
+        fs.existsSync(path.join(newPath, 'downloads', 'tool', '1.0', 'release', 'a.bin'))
+      ).toBe(true);
+      await file.reload();
+      expect(file.storagePath).toBe(`${newName}/downloads/tool/1.0/release/a.bin`);
+
+      expect((await request(app).get(`/api/organization/${oldName}`)).statusCode).toBe(404);
+      expect((await request(app).get(`/api/organization/${newName}`)).statusCode).toBe(200);
+      const squatter = await db.organization.create({ name: oldName });
+      expect(squatter.name).toBe(oldName);
+
+      await squatter.destroy();
+      await product.destroy();
+      fs.rmSync(newPath, { recursive: true, force: true });
+    });
+
+    it('should take the suffixed name when the new name is taken, as creation would', async () => {
+      const holder = await db.organization.create({ name: `Taken-${uniqueId}` });
+      await sync(renamer, [{ uuid: renameUuid, name: `Taken ${uniqueId}`, roles: ['owner'] }]);
+      expect((await orgByUuid(renameUuid)).name).toBe(
+        `Taken-${uniqueId}-${renameUuid.slice(0, 6)}`
+      );
+      await holder.destroy();
+    });
+
+    it('should step past a reserved path segment when the new name is one', async () => {
+      await sync(renamer, [{ uuid: renameUuid, name: 'Search', roles: ['owner'] }]);
+      const mirrored = await orgByUuid(renameUuid);
+      expect(mirrored.name).toBe(`Search-${renameUuid.slice(0, 6)}`);
+      expect(mirrored.display_name).toBe('Search');
+    });
+
+    it('should keep the name while a directory holding entries stands under the new one', async () => {
+      const blocked = `Blocked-${uniqueId}`;
+      const blockedPath = getSecureBoxPath(blocked);
+      const currentPath = getSecureBoxPath(`Search-${renameUuid.slice(0, 6)}`);
+      fs.mkdirSync(currentPath, { recursive: true });
+      fs.mkdirSync(blockedPath, { recursive: true });
+      fs.writeFileSync(path.join(blockedPath, 'stray.txt'), 'x');
+
+      await sync(renamer, [{ uuid: renameUuid, name: `Blocked ${uniqueId}`, roles: ['owner'] }]);
+
+      const mirrored = await orgByUuid(renameUuid);
+      expect(mirrored.name).toBe(`Search-${renameUuid.slice(0, 6)}`);
+      expect(mirrored.display_name).toBe(`Blocked ${uniqueId}`);
+      expect(fs.existsSync(path.join(blockedPath, 'stray.txt'))).toBe(true);
+
+      fs.rmSync(blockedPath, { recursive: true, force: true });
+      fs.rmSync(currentPath, { recursive: true, force: true });
     });
   });
 

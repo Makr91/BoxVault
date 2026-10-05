@@ -657,6 +657,10 @@ describe('Organization API', () => {
       expect(res.body).toHaveProperty('org_code');
       expect(res.body.org_code).toMatch(/^[0-9A-F]{6}$/);
       expect(res.body).toHaveProperty('description', 'A brand new org');
+      expect(res.body.uuid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      );
+      expect(res.body.personal).toBe(false);
     });
 
     it('should fail to create an organization without a name', async () => {

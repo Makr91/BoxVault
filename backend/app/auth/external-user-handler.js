@@ -1,7 +1,7 @@
 import { log } from '../utils/Logger.js';
 import { generateEmailHash, generateOrgCode, isHttpUrl } from '../utils/identity.js';
-import { findFreeOrgName, upsertExternalOrg } from '../utils/externalOrgs.js';
-import { notifyProfileUpdated } from '../utils/events.js';
+import { applyOrgRename, findFreeOrgName, upsertExternalOrg } from '../utils/externalOrgs.js';
+import { notifyProfilesUpdated } from '../utils/events.js';
 
 /**
  * Pick the per-org role from an auth-server organizations claim entry. The
@@ -29,13 +29,13 @@ const pickOrgRole = roles => {
 
 /**
  * Upsert the BoxVault org row that mirrors one org from the claim. The
- * slug/customer-id/collision/reconcile rules live in utils/externalOrgs.js —
- * the ONE home shared with the SCIM receiver.
+ * slug/rename/customer-id/collision/reconcile rules live in
+ * utils/externalOrgs.js — the ONE home shared with the SCIM receiver.
  * @param {Object} db - Database models
  * @param {string} issuer
  * @param {Object} claimOrg - One entry from the organizations claim
  * @param {Object|null} transaction
- * @returns {Promise<Object>} Organization instance
+ * @returns {Promise<{organization: Object, renamed: Object|null}>} The organization and its rename, if any
  */
 const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
   upsertExternalOrg(
@@ -47,6 +47,7 @@ const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
       customerId: claimOrg.customer_id,
       logo: claimOrg.logo,
       description: claimOrg.description,
+      personal: claimOrg.personal === true,
     },
     transaction
   );
@@ -56,7 +57,8 @@ const upsertClaimOrg = (db, issuer, claimOrg, transaction) =>
  * source of truth). Exact mirror: adds/updates memberships in the claimed orgs
  * and REMOVES memberships in every externally mirrored org that is no longer in
  * the claim, whichever issuer face minted the mirror. Never touches
- * locally-created orgs.
+ * locally-created orgs. A mirror the claim renames moves its storage once the
+ * sync commits, and every member of it is told its profile changed.
  * @param {Object} user - User instance
  * @param {Object} profile - Token/userinfo claims (must carry `organizations`)
  * @param {string|null} issuer - The provider issuer (iss)
@@ -81,11 +83,20 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
   const transaction = await db.sequelize.transaction();
   try {
     const seenOrgIds = [];
+    const renames = [];
     let primaryOrgId = null;
     let changed = false;
 
     const mirrorClaimOrg = async claimOrg => {
-      const org = await upsertClaimOrg(db, issuer, claimOrg, transaction);
+      const { organization: org, renamed } = await upsertClaimOrg(
+        db,
+        issuer,
+        claimOrg,
+        transaction
+      );
+      if (renamed) {
+        renames.push(renamed);
+      }
       const role = pickOrgRole(claimOrg.roles);
       const isPrimary = !!claimOrg.primary;
 
@@ -160,9 +171,12 @@ const syncOrganizationsFromClaim = async (user, profile, issuer, db) => {
     }
 
     await transaction.commit();
-    if (changed) {
-      notifyProfileUpdated(user.id);
-    }
+    const moved = await renames.reduce(
+      (chain, renamed) =>
+        chain.then(done => applyOrgRename(db, renamed).then(memberIds => [...done, ...memberIds])),
+      Promise.resolve([])
+    );
+    notifyProfilesUpdated([...(changed ? [user.id] : []), ...moved]);
   } catch (error) {
     await transaction.rollback();
     log.error.error('Organization sync from claim failed', {
@@ -220,8 +234,9 @@ const resolveOrgFromClaim = async (db, profile, issuer) => {
   if (!primary?.uuid) {
     return null;
   }
-  const org = await upsertClaimOrg(db, issuer, primary, null);
-  return org.id;
+  const { organization, renamed } = await upsertClaimOrg(db, issuer, primary, null);
+  notifyProfilesUpdated(await applyOrgRename(db, renamed));
+  return organization.id;
 };
 
 /**

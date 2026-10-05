@@ -1236,6 +1236,65 @@ describe('Download file API', () => {
       await ghost.update({ storagePath: kept });
     });
 
+    it('should answer a browser the UI page carrying the fault and a program the problem body', async () => {
+      const htmlTag = text => text.match(/<html[^>]*>/)[0];
+      const attribute = (tag, name) => (tag.match(new RegExp(`${name}="([^"]*)"`)) || [])[1];
+      const missingPath = `${patchBase}/file/no-such-key/download`;
+      const forbiddenPath = `${fileBase}/download`;
+
+      const missing = await request(app)
+        .get(`${missingPath}?from=page`)
+        .set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
+      expect(missing.statusCode).toBe(404);
+      expect(missing.headers['content-type']).toContain('text/html');
+      expect(missing.headers['cache-control']).toContain('no-store');
+      const missingTag = htmlTag(missing.text);
+      expect(attribute(missingTag, 'data-error-status')).toBe('404');
+      expect(attribute(missingTag, 'data-error-reference')).toMatch(/^[0-9a-f]{16}$/);
+      expect(attribute(missingTag, 'data-error-path')).toBe(missingPath);
+
+      const forbidden = await request(app)
+        .get(`${forbiddenPath}?from=page`)
+        .set('Accept', 'text/html');
+      expect(forbidden.statusCode).toBe(403);
+      expect(forbidden.headers['content-type']).toContain('text/html');
+      expect(forbidden.headers['cache-control']).toContain('no-store');
+      const forbiddenTag = htmlTag(forbidden.text);
+      expect(attribute(forbiddenTag, 'data-error-status')).toBe('403');
+      expect(attribute(forbiddenTag, 'data-error-reference')).toMatch(/^[0-9a-f]{16}$/);
+      expect(attribute(forbiddenTag, 'data-error-reference')).not.toBe(
+        attribute(missingTag, 'data-error-reference')
+      );
+      expect(attribute(forbiddenTag, 'data-error-path')).toBe(forbiddenPath);
+
+      const asJson = await request(app).get(missingPath).set('Accept', 'application/json');
+      expect(asJson.statusCode).toBe(404);
+      expect(asJson.headers['content-type']).toContain('application/problem+json');
+      expect(asJson.body).toMatchObject({
+        type: 'https://auth.startcloud.com/probs/not-found',
+        status: 404,
+        errors: [],
+      });
+
+      const forbiddenJson = await request(app).get(forbiddenPath).set('Accept', 'application/json');
+      expect(forbiddenJson.statusCode).toBe(403);
+      expect(forbiddenJson.headers['content-type']).toContain('application/problem+json');
+      expect(forbiddenJson.body.type).toBe('https://auth.startcloud.com/probs/forbidden');
+
+      const noAccept = await request(app).get(missingPath);
+      expect(noAccept.statusCode).toBe(404);
+      expect(noAccept.headers['content-type']).toContain('application/problem+json');
+
+      const forbiddenNoAccept = await request(app).get(forbiddenPath);
+      expect(forbiddenNoAccept.statusCode).toBe(403);
+      expect(forbiddenNoAccept.headers['content-type']).toContain('application/problem+json');
+
+      const anything = await request(app).get(missingPath).set('Accept', '*/*');
+      expect(anything.statusCode).toBe(404);
+      expect(anything.headers['content-type']).toContain('application/problem+json');
+      expect(anything.body.status).toBe(404);
+    });
+
     it('should handle a download error (500)', async () => {
       const statSpy = jest.spyOn(fs, 'statSync').mockImplementation(() => {
         throw new Error('Stat Error');

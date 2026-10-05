@@ -25,6 +25,7 @@ describe('The served UI build', () => {
     expect(root.text).toContain('<html lang=');
     expect(root.text).not.toContain(' data-brand-theme="');
     expect(root.text).not.toContain('data-brand=');
+    expect(root.text).not.toContain('data-error-');
 
     const face = await request(app).get('/').set('Host', 'face.test');
     expect(face.statusCode).toBe(200);
@@ -46,6 +47,7 @@ describe('The served UI build', () => {
     expect(res.statusCode).toBe(200);
     expect(res.text).toContain('<html data-brand="testtheme"');
     expect(res.text).not.toContain(' data-brand-theme="');
+    expect(res.text).not.toContain('data-error-');
     expect(res.text).toContain(
       '<link rel="stylesheet" href="/themes/testtheme/testtheme.css"></head>'
     );

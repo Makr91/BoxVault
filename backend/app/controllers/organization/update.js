@@ -60,7 +60,7 @@ const { organization: Organization, sequelize, UserOrg } = db;
  *                 organization:
  *                   $ref: '#/components/schemas/Organization'
  *       403:
- *         description: The organization is managed by the identity provider and may not be renamed or have its profile changed here
+ *         description: The organization is managed by the identity provider and may not be renamed or have its profile changed here; its name follows the identity provider's rename
  *         content:
  *           application/problem+json:
  *             schema:
@@ -94,8 +94,9 @@ const trimIfSet = value => (value ? value.trim() : value);
 
 /**
  * Rejections for externally-managed orgs (mirrored from an OIDC provider):
- * the slug is frozen — renaming would break the mirror and every URL — and
- * the profile is IdP-truth (synced through the SCIM Group extension), so
+ * the name is renamed by the identity provider alone, the mirror following its
+ * rename at the next sync, and the profile is IdP-truth (synced through the
+ * SCIM Group extension), so
  * email, description, and org_code may not be CHANGED locally (unchanged
  * echoes from the console form pass through).
  * @param {Object|null} org - Organization instance

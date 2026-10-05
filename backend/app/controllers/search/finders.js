@@ -41,6 +41,16 @@ const FILE_FIELDS = ['fileName'];
 const USER_FIELDS = ['username', 'email'];
 const ITEM_REACH_FIELDS = ['organizationId', 'userId', 'isPublic', 'guestAccess', 'published'];
 const ROW_REACH_FIELDS = ['isPublic', 'guestAccess', 'published'];
+const ITEM_MEMBERS = ['collection', 'org', 'name'];
+const ID_MEMBERS = {
+  organization: ['org'],
+  item: ITEM_MEMBERS,
+  version: [...ITEM_MEMBERS, 'version'],
+  provider: [...ITEM_MEMBERS, 'version', 'provider'],
+  architecture: [...ITEM_MEMBERS, 'version', 'provider', 'architecture'],
+  artifact: [...ITEM_MEMBERS, 'version', 'provider', 'architecture', 'anchor'],
+  user: ['org', 'name'],
+};
 
 /**
  * Whether the rows beneath an item are within the viewer's reach on that
@@ -61,24 +71,43 @@ const reaches = (viewer, item, ...rows) => withinReach(reachOf(viewer, item), ..
 const own = (record, fields) => fields.map(field => [field, record[field]]);
 
 /**
- * One result row; the subtitle is the plain-text chain above the hit.
- * @param {Object} fields - kind, collection, org, name, version, provider, architecture, title, matched
+ * One result row before its score: the id joins the locator members the
+ * kind names with a slash, the subtitle is the plain-text chain above the
+ * hit, the highlight carries the matched field's text with no spans yet,
+ * and the facets name the collection of a row that has one.
+ * @param {Object} fields - kind, collection, org, name, version, provider, architecture, anchor, title, and matched from matchedChain
  * @param {string[]} chain - The context parts, joined with a middle dot
  * @returns {Object} The row
  */
 const row = (fields, chain) => {
-  const { collection = null, version = '', provider = '', architecture = '' } = fields;
-  return {
-    kind: fields.kind,
+  const {
+    kind,
+    collection = null,
+    version = '',
+    provider = '',
+    architecture = '',
+    anchor = '',
+    matched,
+  } = fields;
+  const locators = {
     collection,
     org: fields.org,
     name: fields.name,
     version,
     provider,
     architecture,
+    anchor,
+  };
+  return {
+    kind,
+    id: ID_MEMBERS[kind].map(member => locators[member] || '').join('/'),
+    ...locators,
+    source: null,
     title: fields.title,
     subtitle: chain.filter(Boolean).join(' · '),
-    matched: fields.matched,
+    matched: matched.field,
+    highlight: { [matched.field]: { text: matched.text, spans: [] } },
+    facets: collection ? { collection } : {},
   };
 };
 
@@ -183,11 +212,11 @@ const fileWhere = (columns, { tokens, term, prefix }) => {
  * @param {Object} file - The file row
  * @param {Array<[string, *]>} entries - The chain entries after the file name
  * @param {{tokens: Object[], term: string}} context - The search context
- * @returns {string|null} The matched field name
+ * @returns {{field: string, text: string}|null} The matched field and its text
  */
 const matchedFile = (file, entries, { tokens, term }) => {
   if (checksumMatches(file.checksum, term)) {
-    return 'checksum';
+    return { field: 'checksum', text: file.checksum };
   }
   return matchedChain([['fileName', file.fileName], ...entries], tokens);
 };
@@ -580,6 +609,7 @@ const findDownloadFiles = async context => {
           version: release.versionNumber,
           provider: patch.name,
           architecture: file.key,
+          anchor: file.fileName,
           title: file.fileName,
           matched,
         },
@@ -634,6 +664,7 @@ const findBoxFiles = async context => {
           version: version.versionNumber,
           provider: provider.name,
           architecture: architecture.name,
+          anchor: file.fileName,
           title: file.fileName,
           matched,
         },
@@ -678,6 +709,7 @@ const findIsoFiles = async context => {
           name,
           version: version.versionNumber,
           architecture: file.architecture,
+          anchor: file.fileName,
           title: file.fileName,
           matched,
         },

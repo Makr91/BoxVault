@@ -1,11 +1,14 @@
+import { randomBytes } from 'crypto';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getSiteConfig } from '../utils/config-loader.js';
+import { log } from '../utils/Logger.js';
 
 const UI_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../ui');
 const BUILT_BRAND = '/brand/startcloud/';
 const BRAND_FOLDER = /^\/brand\/(?<folder>[A-Za-z0-9_-]+)\//;
+const SAFE_PATH = /^\/(?![/\\])/;
 
 const escape = value =>
   String(value ?? '')
@@ -40,8 +43,14 @@ const stampLinks = (html, folder) =>
       )
     : html;
 
-const stamp = (html, theme, folder) => {
-  const attributes = theme ? ` data-brand="${escape(theme.name)}"` : '';
+const faultAttributes = fault =>
+  fault
+    ? ` data-error-status="${escape(fault.status)}" data-error-reference="${escape(fault.reference)}" data-error-path="${escape(fault.path)}"`
+    : '';
+
+const stamp = (html, theme, folder, fault = null) => {
+  const brand = theme ? ` data-brand="${escape(theme.name)}"` : '';
+  const attributes = `${brand}${faultAttributes(fault)}`;
   const htmlTag = html.indexOf('<html');
   let out =
     htmlTag < 0 ? html : `${html.slice(0, htmlTag + 5)}${attributes}${html.slice(htmlTag + 5)}`;
@@ -91,6 +100,52 @@ const uiIndex =
       .send(html);
   };
 
+const pathOf = req => {
+  const [raw] = String(req.originalUrl || '/').split('?');
+  try {
+    const path = encodeURI(decodeURI(raw));
+    return SAFE_PATH.test(path) ? path : '/';
+  } catch {
+    return '/';
+  }
+};
+
+/**
+ * Answer a refused browser navigation with the served UI's index.html in place
+ * of the problem body: read from disk and stamped for the site as `uiIndex`
+ * stamps it, plus `data-error-status`, `data-error-reference` (sixteen
+ * lowercase hex characters minted for this answer and logged with the status,
+ * the path and the problem type) and `data-error-path` (the request path,
+ * percent-encoded, no query, `/` when it does not start with a single slash)
+ * on `<html>`, answered with the fault's own status, no-store.
+ * @param {import('express').Request} req - The request
+ * @param {import('express').Response} res - The response
+ * @param {{status: number, type: string}} fault - The fault's status and problem type
+ * @returns {import('express').Response|null} The response, or null when the page cannot be read
+ */
+const errorPage = (req, res, { status, type }) => {
+  let raw;
+  try {
+    raw = readFileSync(join(UI_ROOT, 'index.html'), 'utf8');
+  } catch {
+    return null;
+  }
+  const fault = { status, reference: randomBytes(8).toString('hex'), path: pathOf(req) };
+  const line = { reference: fault.reference, status, path: fault.path, type };
+  if (status >= 500) {
+    log.error.error('Error page answered', line);
+  } else {
+    log.app.warn('Error page answered', line);
+  }
+  const site = getSiteConfig(req.hostname);
+  const html = stamp(raw, themeOf(site), brandFolderOf(site), fault);
+  return res
+    .status(status)
+    .set('Cache-Control', 'no-store, no-transform')
+    .type('text/html; charset=utf-8')
+    .send(html);
+};
+
 /**
  * The handler answering /manifest.json per host: for a hostname whose sites
  * entry names a brand folder, the built manifest with name and short_name
@@ -130,4 +185,4 @@ const uiManifest = (req, res, next) => {
     );
 };
 
-export { uiIndex, uiManifest, brandFolderOf };
+export { uiIndex, uiManifest, brandFolderOf, errorPage };

@@ -9,7 +9,7 @@ case "$1" in
     purge)
         # Remove everything including user and data
         echo "Purging BoxVault completely..."
-        
+
         # Remove system user
         if getent passwd boxvault > /dev/null 2>&1; then
             deluser boxvault || true

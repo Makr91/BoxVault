@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { loadConfig } from '../../utils/config-loader.js';
 import { getJwtClaimOptions } from '../../utils/auth.js';
 import { hashServiceAccountToken, touchServiceAccount } from '../../utils/serviceAccountAuth.js';
-import { resolveUserOrganizations } from '../../utils/userOrgs.js';
+import { membershipOf, resolveUserOrganizations } from '../../utils/userOrgs.js';
+import { serviceAccountMembership } from '../../utils/orgMembership.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import db from '../../models/index.js';
@@ -53,7 +54,7 @@ const findSigninServiceAccount = (username, password) =>
       {
         model: Organization,
         as: 'organization',
-        attributes: ['name'],
+        attributes: ['id', 'uuid', 'name', 'display_name', 'personal', 'logo', 'emailHash'],
       },
       {
         model: User,
@@ -100,19 +101,27 @@ const getLocalSigninRejection = (user, password, authConfig, req) => {
 };
 
 /**
- * Resolve the organizations to embed in the signin response/JWT.
+ * Resolve the organizations to embed in the signin response/JWT: a user's
+ * memberships, or a service account's one organization at its effective role
+ * as its primary one, none once that role is gone or the account has no
+ * organization.
  * @param {Object} user - User or service-account instance
  * @param {boolean} isServiceAccount
- * @returns {Promise<{userOrganizations: Object[], primaryOrgName: string|null|undefined}>}
+ * @returns {Promise<{userOrganizations: Object[], primaryOrgName: string|null}>}
  */
-const resolveSigninOrganizations = (user, isServiceAccount) => {
-  if (isServiceAccount) {
-    // Service account has one organization
-    return { userOrganizations: [], primaryOrgName: user.organization?.name || null };
+const resolveSigninOrganizations = async (user, isServiceAccount) => {
+  if (!isServiceAccount) {
+    return resolveUserOrganizations(user);
   }
-
-  // Pointer-first primary resolution shared with token refresh
-  return resolveUserOrganizations(user);
+  const { organization } = user;
+  if (!organization) {
+    return { userOrganizations: [], primaryOrgName: null };
+  }
+  const membership = await serviceAccountMembership(user);
+  return {
+    userOrganizations: membership ? [membershipOf(organization, membership.role, true)] : [],
+    primaryOrgName: organization.name,
+  };
 };
 
 /**
@@ -229,7 +238,13 @@ export const buildSigninToken = ({
  *                   description: User roles
  *                 organization:
  *                   type: string
- *                   description: Organization name (null for service accounts)
+ *                   nullable: true
+ *                   description: Name of the primary organization; a service account's own organization
+ *                 organizations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Membership'
+ *                   description: Every membership in the identity provider's shape, the same list the token's organizations claim carries; a service account answers its one organization at its effective role as primary, none once its creator left it
  *                 access_token:
  *                   type: string
  *                   description: JWT access token

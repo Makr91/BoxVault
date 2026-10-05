@@ -40,7 +40,7 @@ jest.unstable_mockModule('../app/middleware/scimAuth.js', () => ({
   scimError: mockScimError,
 }));
 
-const mockEvents = { notifyProfileUpdated: jest.fn() };
+const mockEvents = { notifyProfileUpdated: jest.fn(), notifyProfilesUpdated: jest.fn() };
 jest.unstable_mockModule('../app/utils/events.js', () => mockEvents);
 
 const { createUser, putUser } = await import('../app/controllers/scim/users.js');

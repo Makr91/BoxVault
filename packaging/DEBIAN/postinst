@@ -98,6 +98,7 @@ else
 fi
 
 systemctl daemon-reload
+systemctl enable --now boxvault-update.path || true
 
 echo ""
 echo "======================================================================"

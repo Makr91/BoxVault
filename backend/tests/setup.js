@@ -216,25 +216,8 @@ beforeAll(async () => {
   }
 });
 
-// Global teardown - runs once after all tests
 afterAll(async () => {
-  // Close database connection
   await db.sequelize.close();
-
-  // Clean up test storage
-  const testStorageDir = path.join(__dirname, '__test_storage__');
-  if (fs.existsSync(testStorageDir)) {
-    fs.rmSync(testStorageDir, { recursive: true, force: true });
-  }
-
-  // Clean up test config
-  [dbConfigPath, appConfigPath, authConfigPath, mailConfigPath].forEach(configPath => {
-    [configPath, `${configPath}.bak`].forEach(file => {
-      if (fs.existsSync(file)) {
-        fs.unlinkSync(file);
-      }
-    });
-  });
 });
 
 // Helper functions for tests

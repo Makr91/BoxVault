@@ -131,6 +131,55 @@ describe('User API', () => {
       expect(changed.body.name).toBe('Renamed');
       expect(changed.headers.etag).not.toBe(first.headers.etag);
     });
+
+    it("should answer the memberships in the identity provider's shape, primary from the pointer", async () => {
+      await db.user.update({ primary_organization_id: orgOne.id }, { where: { id: testUser.id } });
+
+      const res = await request(app).get('/api/user').set('x-access-token', userToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.organizations).toHaveLength(2);
+      expect(res.body.organizations).toEqual(
+        expect.arrayContaining([
+          {
+            uuid: orgOne.uuid,
+            name: orgOne.name,
+            display_name: null,
+            roles: ['MEMBER'],
+            primary: true,
+            personal: false,
+            logo_url: null,
+            email_hash: null,
+          },
+          {
+            uuid: orgTwo.uuid,
+            name: orgTwo.name,
+            display_name: null,
+            roles: ['MEMBER'],
+            primary: false,
+            personal: false,
+            logo_url: null,
+            email_hash: null,
+          },
+        ])
+      );
+      expect(orgOne.uuid).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+      );
+    });
+
+    it('should carry the same memberships in the signin answer and its token', async () => {
+      const res = await request(app)
+        .post('/api/auth/signin')
+        .send({ username: testUser.username, password: 'aSecurePassword123' });
+
+      expect(res.statusCode).toBe(200);
+      const own = res.body.organizations.find(entry => entry.uuid === orgOne.uuid);
+      expect(own).toEqual(expect.objectContaining({ roles: ['MEMBER'], primary: true }));
+      expect(own).not.toHaveProperty('role');
+      expect(own).not.toHaveProperty('is_primary');
+      expect(jwt.decode(res.body.access_token).organizations).toEqual(res.body.organizations);
+    });
   });
 
   describe('PATCH /api/user', () => {

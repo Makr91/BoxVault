@@ -26,6 +26,9 @@ const { UserOrg, organization } = db;
  *                   id:
  *                     type: integer
  *                     description: Organization ID
+ *                   uuid:
+ *                     type: string
+ *                     description: The organization's immutable uuid
  *                   name:
  *                     type: string
  *                     description: Organization name
@@ -61,13 +64,14 @@ export const getAvailableOrganizations = async (req, res) => {
         {
           model: organization,
           as: 'organization',
-          attributes: ['id', 'name', 'description'],
+          attributes: ['id', 'uuid', 'name', 'description'],
         },
       ],
     });
 
     const organizations = userOrganizations.filter(canWriteInOrg).map(userOrg => ({
       id: userOrg.organization.id,
+      uuid: userOrg.organization.uuid,
       name: userOrg.organization.name,
       description: userOrg.organization.description,
       role: userOrg.role,

@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply a BoxVault self-update requested from the admin page
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/rm -f /var/lib/boxvault/update.request
+ExecStart=/usr/bin/apt-get install -y --only-upgrade boxvault
+Environment=DEBIAN_FRONTEND=noninteractive
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=boxvault-update

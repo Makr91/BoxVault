@@ -6,6 +6,8 @@ const columnsOf = table => db.sequelize.getQueryInterface().describeTable(table)
 
 const run = sql => db.sequelize.query(sql, { raw: true });
 
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 describe('The database schema across backends', () => {
   const uniqueId = Date.now().toString(36);
 
@@ -109,6 +111,46 @@ describe('The database schema across backends', () => {
       await account.reload();
       expect(account.preferredMode).toBe('dark');
       expect(account.preferredTheme).toBeNull();
+    });
+
+    it('should give a local organization a random uuid at creation', async () => {
+      const organization = await db.organization.create({ name: `SchemaOrg-${uniqueId}-minted` });
+      expect(organization.uuid).toMatch(UUID_V4);
+      await organization.reload();
+      expect(organization.uuid).toMatch(UUID_V4);
+    });
+
+    it('should give every organization lacking a uuid its identity, the provider uuid for a mirror', async () => {
+      const mirroredUuid = `schema-mirror-${uniqueId}`;
+      const stamp = "'2026-01-01 00:00:00'";
+      await db.sequelize.getQueryInterface().removeIndex('organizations', 'uuid');
+      await run('ALTER TABLE `organizations` DROP COLUMN `uuid`');
+      expect(await columnsOf('organizations')).not.toHaveProperty('uuid');
+      await run(
+        `INSERT INTO \`organizations\` (\`name\`, \`createdAt\`, \`updatedAt\`) VALUES ('SchemaOrg-${uniqueId}-local', ${stamp}, ${stamp})`
+      );
+      await run(
+        `INSERT INTO \`organizations\` (\`name\`, \`external_issuer\`, \`external_org_id\`, \`createdAt\`, \`updatedAt\`) VALUES ('SchemaOrg-${uniqueId}-mirror', 'https://schema-idp.example', '${mirroredUuid}', ${stamp}, ${stamp})`
+      );
+
+      const changed = await upgradeSchema(db.sequelize);
+
+      expect(await columnsOf('organizations')).toHaveProperty('uuid');
+      expect(changed.identified).toBeGreaterThanOrEqual(2);
+      const local = await db.organization.findOne({
+        where: { name: `SchemaOrg-${uniqueId}-local` },
+      });
+      const mirrored = await db.organization.findOne({
+        where: { name: `SchemaOrg-${uniqueId}-mirror` },
+      });
+      expect(local.uuid).toMatch(UUID_V4);
+      expect(mirrored.uuid).toBe(mirroredUuid);
+
+      const minted = local.uuid;
+      const again = await upgradeSchema(db.sequelize);
+      expect(again.identified).toBe(0);
+      await local.reload();
+      expect(local.uuid).toBe(minted);
     });
   });
 });

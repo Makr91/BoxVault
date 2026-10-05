@@ -7,7 +7,9 @@ import { getConfigPath, reloadConfig } from '../app/utils/config-loader.js';
 const DEFAULT_FEATURES = [
   'local-accounts',
   'setup',
+  'landing',
   'admin',
+  'update',
   'org-console',
   'discover',
   'invitations',
@@ -27,6 +29,11 @@ const DEFAULT_COMMUNITY = [
   { label: 'Sponsor BoxVault', url: 'https://github.com/sponsors/Makr91' },
   { label: 'Makr91 on GitHub', url: 'https://github.com/Makr91' },
 ];
+
+const SEARCH = {
+  path: '/api/search',
+  kinds: ['organization', 'item', 'version', 'provider', 'architecture', 'artifact', 'user'],
+};
 
 const FACE_FEATURES = [
   'admin',
@@ -57,6 +64,7 @@ describe('GET /api/status per Host', () => {
     });
     expect(res.body.links).toEqual({ docs: '/docs', contact: '', community: DEFAULT_COMMUNITY });
     expect(res.body.features).toEqual(DEFAULT_FEATURES);
+    expect(res.body.search).toEqual(SEARCH);
   });
 
   it('should answer the sites map entry on a named hostname', async () => {
@@ -103,6 +111,7 @@ describe('GET /api/status per Host', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.collections).toEqual(['downloads']);
     expect(res.body.features).toEqual(FACE_FEATURES);
+    expect(res.body.search).toEqual(SEARCH);
     expect(res.body.brand.name).toBe('BoxVault');
     expect(res.body.links.community).toEqual(DEFAULT_COMMUNITY);
     expect(res.body).not.toHaveProperty('organization');
@@ -140,6 +149,27 @@ describe('GET /api/status per Host', () => {
     } finally {
       fs.writeFileSync(appConfigPath, originalApp);
       fs.writeFileSync(authConfigPath, originalAuth);
+      await reloadConfig();
+    }
+  });
+
+  it('should answer no search member on a hostname whose features lack search', async () => {
+    const appConfigPath = getConfigPath('app');
+    const originalApp = fs.readFileSync(appConfigPath, 'utf8');
+    try {
+      const appConfig = yaml.load(originalApp);
+      appConfig.sites['face.test'].features = ['admin', 'events'];
+      fs.writeFileSync(appConfigPath, yaml.dump(appConfig));
+      await reloadConfig();
+
+      const res = await request(app).get('/api/status').set('Host', 'face.test');
+      expect(res.body.features).toEqual(['admin', 'events']);
+      expect(res.body).not.toHaveProperty('search');
+
+      const plain = await request(app).get('/api/status');
+      expect(plain.body.search).toEqual(SEARCH);
+    } finally {
+      fs.writeFileSync(appConfigPath, originalApp);
       await reloadConfig();
     }
   });

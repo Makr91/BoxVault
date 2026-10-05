@@ -23,7 +23,9 @@ const STATUS = {
   config: ['app', 'auth', 'db', 'mail'],
   features: [
     'setup',
+    'landing',
     'admin',
+    'update',
     'org-console',
     'discover',
     'invitations',
@@ -48,6 +50,11 @@ const STATUS = {
     ],
   },
   ticket: null,
+};
+
+const SEARCH = {
+  path: '/api/search',
+  kinds: ['organization', 'item', 'version', 'provider', 'architecture', 'artifact', 'user'],
 };
 
 /**
@@ -145,7 +152,7 @@ const featuresOf = (site, localEnabled) => {
  * /api/status:
  *   get:
  *     summary: App identity and capabilities for the STARTcloud UI (public)
- *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its theme and themes list included, never a mode), collections, links (its community list included), features, organization, sorts and groups are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and none of organization, sorts or groups.
+ *     description: Probed by the STARTcloud UI against its own origin before anything renders. role names the app, version is this backend's version, auth lists the session methods the UI may create (first entry wins) and is decided per request from auth.jwt.local_enabled, idp describes the browser OIDC client when auth is idp, collections names the collection registry entries to mount in order, config names the config files the admin page draws one tab each for, features is the gate every route, menu row, column and control checks with hasFeature, events names the one event stream and its topics, search names the search route and the kinds it answers while the answered features list search, and ticket is null because BoxVault serves its ticket config at /api/config/ticket. brand (its theme and themes list included, never a mode), collections, links (its community list included), features, organization, sorts and groups are answered per Host header from the sites map of the app configuration, the unnamed hostname answering the defaults and none of organization, sorts or groups.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -278,10 +285,24 @@ const featuresOf = (site, localEnabled) => {
  *                   example: [app, auth, db, mail]
  *                 features:
  *                   type: array
- *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; admin gates /admin and the Admin row (still needs ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; sidebar gates the sidebar column, every group and tree the mounted features export, without it no column and the brand stays in the header; search gates the app-wide search box backed by /api/search; events gates the one event stream at events.path. Answered per Host header from the sites map, a site entry without a features list answering every token above and a site entry with one answering exactly the tokens it lists, local-accounts among them only while listed and auth.jwt.local_enabled is on
+ *                   description: Kebab-case feature tokens. local-accounts is present while auth.jwt.local_enabled is on and gates /register and the profile password, email and delete sections; setup gates /setup and the setup gate; landing keeps the signed-out pages, the public listings and the sign-in placard, where without it the UI sends a signed-out visitor to the sign-in page; admin gates /admin and the Admin row (still needs ROLE_ADMIN); update gates the admin Update row and its page over GET /api/app/updates/check and POST /api/app/updates/apply (still needs admin and ROLE_ADMIN); org-console gates /org-console (still needs org OWNER/ADMIN); discover gates /organizations/discover and the Discover button; invitations gates the Invitations tab; uploads gates ISO and box file uploads; watches gates watch stars and the Watched filter; deploy gates the Deploy button (still needs the hyperweaver entitlement and a configured URL); favorites gates the Add to Favorites toggle; notifications gates the Notifications row (still needs the scope); footer gates the footer row; health gates the footer health heart, drawn only while footer is listed too; sidebar gates the sidebar column, every group and tree the mounted features export, without it no column and the brand stays in the header; search gates the app-wide search box backed by the route the search member names; events gates the one event stream at events.path. Answered per Host header from the sites map, a site entry without a features list answering every token above and a site entry with one answering exactly the tokens it lists, local-accounts among them only while listed and auth.jwt.local_enabled is on
  *                   items:
  *                     type: string
- *                   example: [local-accounts, setup, admin, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, sidebar, search, events]
+ *                   example: [local-accounts, setup, landing, admin, update, org-console, discover, invitations, uploads, watches, deploy, favorites, notifications, health, footer, sidebar, search, events]
+ *                 search:
+ *                   type: object
+ *                   required: [path, kinds]
+ *                   description: Present only while the answered features list search; the route the UI asks search at and the kinds it answers
+ *                   properties:
+ *                     path:
+ *                       type: string
+ *                       example: /api/search
+ *                     kinds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                         enum: [organization, item, version, provider, architecture, artifact, user]
+ *                       example: [organization, item, version, provider, architecture, artifact, user]
  *                 events:
  *                   type: object
  *                   required: [path, topics]
@@ -333,12 +354,14 @@ const getStatus = (req, res) => {
   const localEnabled = authConfig.auth?.jwt?.local_enabled !== false;
   const idp = localEnabled ? null : enabledIdp(authConfig.auth?.oidc?.providers || {});
   const site = getSiteConfig(req.hostname);
+  const features = featuresOf(site, localEnabled);
   return res.json({
     ...STATUS,
     ...faceOf(site),
     auth: idp ? ['idp'] : ['backend'],
     ...(idp ? { idp } : {}),
-    features: featuresOf(site, localEnabled),
+    features,
+    ...(features.includes('search') ? { search: SEARCH } : {}),
   });
 };
 

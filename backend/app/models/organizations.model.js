@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 export default (sequelize, Sequelize) => {
   const Organization = sequelize.define(
     'organizations',
@@ -82,7 +84,7 @@ export default (sequelize, Sequelize) => {
         type: Sequelize.STRING,
         allowNull: true,
         comment:
-          'Human-readable org name for presentation. For external orgs, refreshed from the provider on every sync; name (the URL slug) is frozen at creation.',
+          'Human-readable org name for presentation. For external orgs, refreshed from the provider on every sync; name (the URL slug) follows the provider rename by the rules a new mirror is named with.',
         field: 'display_name',
       },
       external_issuer: {
@@ -100,9 +102,28 @@ export default (sequelize, Sequelize) => {
           'Immutable org UUID from the OIDC provider; null for local orgs. Keyed with external_issuer',
         field: 'external_org_id',
       },
+      uuid: {
+        type: Sequelize.STRING(36),
+        allowNull: true,
+        comment:
+          'Immutable org identity: the provider org UUID for a mirrored org, a random UUID minted at creation for a local one',
+      },
+      personal: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: 'Whether the identity provider marks this org as a personal org',
+      },
     },
     {
       defaultScope: {},
+      hooks: {
+        beforeCreate: organization => {
+          if (!organization.uuid) {
+            organization.uuid = organization.external_org_id || randomUUID();
+          }
+        },
+      },
       indexes: [
         {
           unique: true,
@@ -113,6 +134,11 @@ export default (sequelize, Sequelize) => {
           unique: true,
           fields: ['org_code'],
           name: 'org_code',
+        },
+        {
+          unique: true,
+          fields: ['uuid'],
+          name: 'uuid',
         },
       ],
     }

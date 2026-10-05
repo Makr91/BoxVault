@@ -64,6 +64,27 @@ Response:
 
 The body also carries `organizations`, `preferred_language`, `preferred_mode`, `preferred_theme`, `preferred_motion`, `email_hash`, `avatar_url` and `entitlements`. There is no refresh token.
 
+`organizations` lists every membership in the identity provider's shape, the same list the token's `organizations` claim, the refresh answer and `GET /api/user` carry:
+
+```json
+[
+  {
+    "uuid": "3f1c2b9e-6a4d-4c1e-9b7a-2d8e5f0a1c34",
+    "name": "myorg",
+    "display_name": "My Organization",
+    "roles": ["OWNER"],
+    "primary": true,
+    "personal": false,
+    "logo_url": "https://myorg.example.com/logo.png",
+    "email_hash": "d47b0c84e924f69e8601b3772785607615934159defdafca51013afecc2a7f11"
+  }
+]
+```
+
+`uuid` is the organization's immutable identity: the identity provider's uuid for an organization mirrored from it, a random uuid minted at creation for a local one. `name` is the word of the URL, `/myorg/...` and `vagrant box add myorg/<box>`, and `display_name` the name a person reads, or `null`. `roles` holds the membership role upper-cased, `OWNER`, `ADMIN`, `MEMBER` or `GUEST`. `primary` marks the user's primary organization, `personal` an organization the identity provider marks as personal, and `logo_url` and `email_hash` are the organization's logo and the SHA-256 of its email, each `null` when unset. A service account answers its one organization at its effective role as primary, and none once its creator no longer belongs there.
+
+A rename at the identity provider renames a mirrored organization's `name` at the next sign-in or SCIM push, by the rules a new mirror is named with, its storage moving with it; the old name then answers as any unknown organization does and is free for anyone to register.
+
 ### Using JWT Tokens
 
 Include the token in API requests:

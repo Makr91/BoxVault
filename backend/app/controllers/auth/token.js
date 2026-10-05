@@ -52,6 +52,11 @@ export const idpClaimsOf = source =>
  *                 stay_logged_in:
  *                   type: boolean
  *                   description: Stay-logged-in status
+ *                 organizations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Membership'
+ *                   description: Every membership in the identity provider's shape, the same list the new token's organizations claim carries
  *                 entitlements:
  *                   type: array
  *                   items:

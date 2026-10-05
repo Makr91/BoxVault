@@ -2,29 +2,24 @@ import db from '../../models/index.js';
 import { log } from '../../utils/Logger.js';
 import { problem } from '../../utils/problem.js';
 import { serviceAccountMembership } from '../../utils/orgMembership.js';
-const {
-  UserOrg,
-  service_account: ServiceAccount,
-  organization: Organization,
-  user: User,
-  scimGroup: ScimGroup,
-} = db;
+const { UserOrg, service_account: ServiceAccount, organization: Organization, user: User } = db;
 
 /**
- * Org UUIDs the auth server marks as personal, among the given mirrored orgs.
- * @param {string[]} orgUuids - external_org_id values (nulls filtered)
- * @returns {Promise<Set<string>>}
+ * The organization object of one row of this answer.
+ * @param {Object} org - The organizations row or its raw columns
+ * @returns {Object} The organization as answered
  */
-const findPersonalOrgUuids = async orgUuids => {
-  if (orgUuids.length === 0) {
-    return new Set();
-  }
-  const rows = await ScimGroup.findAll({
-    where: { org_uuid: orgUuids, personal: true },
-    attributes: ['org_uuid'],
-  });
-  return new Set(rows.map(row => row.org_uuid));
-};
+const organizationOf = org => ({
+  id: org.id,
+  uuid: org.uuid,
+  name: org.name,
+  description: org.description,
+  email_hash: org.emailHash,
+  logo: org.logo,
+  display_name: org.display_name,
+  url: org.url,
+  access_mode: org.access_mode,
+});
 
 /**
  * @swagger
@@ -45,21 +40,43 @@ const findPersonalOrgUuids = async orgUuids => {
  *               items:
  *                 type: object
  *                 properties:
- *                   id:
- *                     type: integer
- *                     description: Organization ID
- *                   name:
- *                     type: string
- *                     description: Organization name
- *                   description:
- *                     type: string
- *                     description: Organization description
- *                   email_hash:
- *                     type: string
- *                     description: Email hash for Gravatar
+ *                   organization:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Organization ID
+ *                       uuid:
+ *                         type: string
+ *                         description: The organization's immutable uuid
+ *                       name:
+ *                         type: string
+ *                         description: Organization name, the URL segment
+ *                       description:
+ *                         type: string
+ *                         description: Organization description
+ *                       email_hash:
+ *                         type: string
+ *                         description: Email hash for Gravatar
+ *                       logo:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Organization logo URL
+ *                       display_name:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Human-readable organization name
+ *                       url:
+ *                         type: string
+ *                         nullable: true
+ *                         description: Organization website URL
+ *                       access_mode:
+ *                         type: string
+ *                         enum: [private, invite, request]
+ *                         description: Organization access mode
  *                   role:
  *                     type: string
- *                     enum: [member, admin, owner]
+ *                     enum: [guest, member, admin, owner]
  *                     description: User's role in this organization
  *                   is_primary:
  *                     type: boolean
@@ -71,10 +88,6 @@ const findPersonalOrgUuids = async orgUuids => {
  *                     type: string
  *                     format: date-time
  *                     description: When user joined this organization
- *                   access_mode:
- *                     type: string
- *                     enum: [private, invite, request]
- *                     description: Organization access mode
  *       401:
  *         description: Authentication required
  *         content:
@@ -110,18 +123,10 @@ const getUserOrganizations = async (req, res) => {
       const org = serviceAccount.organization;
       const organizations = [
         {
-          organization: {
-            id: org.id,
-            name: org.name,
-            description: org.description,
-            email_hash: org.emailHash,
-            logo: org.logo,
-            display_name: org.display_name,
-            url: org.url,
-            access_mode: org.access_mode,
-          },
+          organization: organizationOf(org),
           role: membership.role,
           is_primary: true,
+          personal: Boolean(org.personal),
           joined_at: serviceAccount.createdAt,
         },
       ];
@@ -142,25 +147,13 @@ const getUserOrganizations = async (req, res) => {
       User.findByPk(userId, { attributes: ['primary_organization_id'] }),
     ]);
     const primaryOrganizationId = userRow?.primary_organization_id ?? null;
-    const personalOrgUuids = await findPersonalOrgUuids(
-      userOrganizations.map(userOrg => userOrg.organization.external_org_id).filter(Boolean)
-    );
 
     // Format response for frontend
     const organizations = userOrganizations.map(userOrg => ({
-      organization: {
-        id: userOrg.organization.id,
-        name: userOrg.organization.name,
-        description: userOrg.organization.description,
-        email_hash: userOrg.organization.emailHash,
-        logo: userOrg.organization.logo,
-        display_name: userOrg.organization.display_name,
-        url: userOrg.organization.url,
-        access_mode: userOrg.organization.access_mode,
-      },
+      organization: organizationOf(userOrg.organization),
       role: userOrg.role,
       is_primary: userOrg.organization.id === primaryOrganizationId,
-      personal: personalOrgUuids.has(userOrg.organization.external_org_id),
+      personal: Boolean(userOrg.organization.personal),
       joined_at: userOrg.joined_at,
     }));
 

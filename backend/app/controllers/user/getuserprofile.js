@@ -81,6 +81,11 @@ const { user: User, role: Role, organization: Organization } = db;
  *                 organization:
  *                   type: string
  *                   description: Organization name
+ *                 organizations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Membership'
+ *                   description: Every membership in the identity provider's shape
  *                 avatar_url:
  *                   type: string
  *                   nullable: true

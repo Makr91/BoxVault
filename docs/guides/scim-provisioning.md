@@ -134,6 +134,13 @@ The org profile — email, description, URL, telephone, locale, timezone,
 address, access mode, default role — rides on the group extension and is applied
 as full desired state, same as users.
 
+The group's `displayName` is the organization's display name, and its name, the
+URL segment, follows it by the rules a new mirror is named with: a changed
+`displayName` renames the organization and moves its storage directory, a taken
+or reserved name taking the uuid-suffixed form. The old name is not kept; it
+answers as any unknown organization does. The extension's `personal` flag is
+stored on the organization.
+
 ## Queries and filters
 
 Exactly one filter is supported, by contract:

@@ -19,14 +19,12 @@ const fieldOf = pointer => pointer.split('/').filter(Boolean).pop() || '';
 const detailFor = (req, error) =>
   req.__(`validation.${error.rule}`, { field: fieldOf(error.pointer), ...(error.params || {}) });
 
-/**
- * Send one RFC 9457 problem body as `application/problem+json`.
- * @param {import('express').Response} res - Express response
- * @param {import('express').Request} req - Express request (i18n)
- * @param {{status: number, type: string, title?: string, errors?: Array<{pointer: string, rule: string, params?: Object, detail?: string}>}} body - The problem
- * @returns {import('express').Response}
- */
-const problem = (res, req, { status, type, title, errors = [] }) =>
+const HTML = /\btext\/html\b/i;
+
+const wantsPage = req =>
+  HTML.test(req?.headers?.accept || '') && req.accepts(['json', 'html']) === 'html';
+
+const body = (res, req, { status, type, title, errors = [] }) =>
   res
     .status(status)
     .type('application/problem+json')
@@ -41,6 +39,24 @@ const problem = (res, req, { status, type, title, errors = [] }) =>
         detail: error.detail || detailFor(req, error),
       })),
     });
+
+/**
+ * Send one RFC 9457 problem body as `application/problem+json`; a request
+ * whose `Accept` names `text/html` and prefers it to JSON is a browser
+ * navigation and is answered the UI's page instead, carrying the fault on
+ * `<html>` with the fault's own status, the problem body answering only when
+ * the page cannot be read.
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').Request} req - Express request (i18n)
+ * @param {{status: number, type: string, title?: string, errors?: Array<{pointer: string, rule: string, params?: Object, detail?: string}>}} problemBody - The problem
+ * @returns {import('express').Response|Promise<import('express').Response>} The response, a promise of it for the page
+ */
+const problem = (res, req, problemBody) =>
+  wantsPage(req)
+    ? import('../middleware/uiIndex.js').then(
+        ({ errorPage }) => errorPage(req, res, problemBody) || body(res, req, problemBody)
+      )
+    : body(res, req, problemBody);
 
 /**
  * Refuse a write with its failing rules: 409 `conflict` when every failing

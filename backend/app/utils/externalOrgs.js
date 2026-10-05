@@ -1,13 +1,3 @@
-// externalOrgs.js — the ONE home for the org-mirror rules.
-//
-// Both write paths that mirror an auth-server org into BoxVault — the
-// login-time organizations-claim sync (auth/external-user-handler.js) and the
-// SCIM /Groups receiver (controllers/scim) — implement the same locked rules
-// through this module:
-//   - slug frozen at creation (stable URLs forever), display_name tracks the
-//     mutable upstream name;
-//   - org_code IS the admin-assigned customer ID when present (6-hex only,
-//     drift reconciled on later syncs), else the next sequential local code.
 import { log } from './Logger.js';
 import { generateOrgCode, isHttpUrl } from './identity.js';
 import { isReservedSegment } from './reservedSegments.js';
@@ -42,14 +32,16 @@ const slugifyOrgName = (name, externalOrgId) => {
  * Find a unique, URL-safe org name. BoxVault org names are globally unique
  * (they are the URL slug), but upstream names are neither unique nor stable,
  * so on a collision we disambiguate with a fragment of the immutable org UUID.
- * A reserved path segment counts as a collision.
+ * A reserved path segment counts as a collision; the name an organization
+ * already holds counts as free for that organization.
  * @param {Object} Organization - Sequelize model
  * @param {string} desired - Upstream org name
  * @param {string} externalOrgId - Immutable org UUID
  * @param {Object|null} transaction
+ * @param {number|null} [selfId] - Id of the organization being named, whose own name is no clash
  * @returns {Promise<string>}
  */
-const findFreeOrgName = (Organization, desired, externalOrgId, transaction) => {
+const findFreeOrgName = (Organization, desired, externalOrgId, transaction, selfId = null) => {
   const base = slugifyOrgName(desired, externalOrgId);
   const opts = transaction ? { transaction } : {};
   const candidates = [
@@ -67,7 +59,7 @@ const findFreeOrgName = (Organization, desired, externalOrgId, transaction) => {
       return probe(index + 1);
     }
     const clash = await Organization.findOne({ where: { name: candidates[index] }, ...opts });
-    if (!clash) {
+    if (!clash || clash.id === selfId) {
       return candidates[index];
     }
     return probe(index + 1);
@@ -122,18 +114,52 @@ const customerIdIsFree = async (Organization, customerId, selfOrgId, opts) => {
 };
 
 /**
+ * The rename an upstream name asks of an existing mirror: the name a new
+ * mirror would be given today, its own current name counting as free. None
+ * when the upstream carries no name or the name is unchanged; none as well,
+ * logged and retried at the next sync, while a directory holding entries
+ * already stands under the new name.
+ * @param {Object} Organization - Sequelize model
+ * @param {Object} org - The mirrored organization row
+ * @param {Object} source - { uuid, name }
+ * @param {Object|null} transaction
+ * @returns {Promise<{id: number, from: string, to: string}|null>} The rename, or null
+ */
+const renameOf = async (Organization, org, source, transaction) => {
+  if (!source.name) {
+    return null;
+  }
+  const to = await findFreeOrgName(Organization, source.name, source.uuid, transaction, org.id);
+  if (to === org.name) {
+    return null;
+  }
+  const { getSecureBoxPath, isOccupiedTarget } = await import('./paths.js');
+  if (isOccupiedTarget(getSecureBoxPath(org.name), getSecureBoxPath(to))) {
+    log.error.error(
+      'Mirrored organization rename skipped: a directory holding entries stands under the new name',
+      { organization: org.name, name: to, externalOrgId: source.uuid }
+    );
+    return null;
+  }
+  return { id: org.id, from: org.name, to };
+};
+
+/**
  * Upsert the BoxVault org row that mirrors one auth-server org, keyed on
  * external_org_id alone: one issuer answering under several hostnames is
  * still one issuer, so the mirror is reused whichever face the org arrives
- * through and external_issuer records the face that first minted it. Slug is
- * frozen at creation; display_name refreshes to the mutable upstream name;
- * org_code is the customer ID when present (reconciled if it drifted), else
- * a sequential local code.
+ * through and external_issuer records the face that first minted it. The
+ * name follows the upstream name by the rules a new mirror is named with,
+ * display_name and personal refresh to the upstream values, org_code is the
+ * customer ID when present (reconciled if it drifted), else a sequential
+ * local code. A rename changes the row alone; its storage directory, stored
+ * download paths and member notifications follow through applyOrgRename once
+ * the caller's transaction commits.
  * @param {Object} db - Database models
  * @param {string} issuer - OIDC issuer the org arrived through
- * @param {Object} source - { uuid, name, customerId, logo, description }
+ * @param {Object} source - { uuid, name, customerId, logo, description, personal }
  * @param {Object|null} transaction
- * @returns {Promise<Object>} Organization instance
+ * @returns {Promise<{organization: Object, renamed: {id: number, from: string, to: string}|null}>} The organization and its rename, if any
  */
 const upsertExternalOrg = async (db, issuer, source, transaction) => {
   const { organization: Organization } = db;
@@ -154,11 +180,12 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
     const useCustomerId =
       !!customerId && (await customerIdIsFree(Organization, customerId, null, opts));
     const name = await findFreeOrgName(Organization, source.name, source.uuid, transaction);
-    return Organization.create(
+    const organization = await Organization.create(
       {
         name,
         display_name: source.name || name,
         logo,
+        personal: source.personal,
         ...(description ? { description } : {}),
         external_issuer: issuer,
         external_org_id: source.uuid,
@@ -166,13 +193,19 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
       },
       opts
     );
+    return { organization, renamed: null };
   }
 
-  // Existing mirror row — never re-slugify; only refresh the display name and
-  // reconcile a drifted org_code to the upstream customer ID (one-time heal).
   const patch = {};
+  const renamed = await renameOf(Organization, org, source, transaction);
+  if (renamed) {
+    patch.name = renamed.to;
+  }
   if (source.name && org.display_name !== source.name) {
     patch.display_name = source.name;
+  }
+  if (org.personal !== source.personal) {
+    patch.personal = source.personal;
   }
   if (logo && org.logo !== logo) {
     patch.logo = logo;
@@ -190,7 +223,45 @@ const upsertExternalOrg = async (db, issuer, source, transaction) => {
   if (Object.keys(patch).length) {
     await org.update(patch, opts);
   }
-  return org;
+  return { organization: org, renamed };
 };
 
-export { findFreeOrgName, upsertExternalOrg };
+/**
+ * Carry a committed mirror rename to the disk the way a local rename does:
+ * the storage directory moves to the new name, then every stored download
+ * path follows it. A failure is logged and never thrown, the row being
+ * committed already.
+ * @param {Object} db - Database models
+ * @param {{id: number, from: string, to: string}|null} renamed - From upsertExternalOrg
+ * @returns {Promise<number[]>} The ids of the organization's members, none when nothing was renamed
+ */
+const applyOrgRename = async (db, renamed) => {
+  if (!renamed) {
+    return [];
+  }
+  try {
+    const [{ getSecureBoxPath, renameDirectory }, { renameStoragePaths, storagePathFor }] =
+      await Promise.all([import('./paths.js'), import('../controllers/download/helpers.js')]);
+    renameDirectory(getSecureBoxPath(renamed.from), getSecureBoxPath(renamed.to));
+    await renameStoragePaths(storagePathFor(renamed.from), storagePathFor(renamed.to));
+  } catch (error) {
+    log.error.error('Mirrored organization storage could not follow its rename', {
+      from: renamed.from,
+      to: renamed.to,
+      error: error.message,
+    });
+  }
+  const members = await db.UserOrg.findAll({
+    where: { organization_id: renamed.id },
+    attributes: ['user_id'],
+  }).catch(error => {
+    log.error.error('Members of a renamed mirrored organization could not be read', {
+      organizationId: renamed.id,
+      error: error.message,
+    });
+    return [];
+  });
+  return members.map(member => member.user_id);
+};
+
+export { findFreeOrgName, upsertExternalOrg, applyOrgRename };

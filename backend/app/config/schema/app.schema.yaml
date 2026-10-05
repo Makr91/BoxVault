@@ -709,7 +709,9 @@ properties:
             enum:
               - local-accounts
               - setup
+              - landing
               - admin
+              - update
               - org-console
               - discover
               - invitations

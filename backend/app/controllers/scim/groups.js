@@ -1,10 +1,6 @@
-// groups.js — SCIM /Groups receiver. BoxVault ASSIGNS resource ids (the stored
-// scim_group row's numeric id serialized as a string); the auth server's
-// identity travels ONLY in externalId (`<org-uuid>:<role>`), scoped per
-// issuer. displayName is cosmetic and never a uniqueness key.
 import { log } from '../../utils/Logger.js';
 import db from '../../models/index.js';
-import { upsertExternalOrg } from '../../utils/externalOrgs.js';
+import { applyOrgRename, upsertExternalOrg } from '../../utils/externalOrgs.js';
 import { notifyProfilesUpdated } from '../../utils/events.js';
 import {
   SCIM_GROUP_EXTENSION,
@@ -174,17 +170,22 @@ const createGroup = async (req, res) => {
       { transaction }
     );
 
-    const org = await upsertExternalOrg(
+    const { organization: org, renamed } = await upsertExternalOrg(
       db,
       req.scimIssuer,
-      { uuid: parsed.orgUuid, name: state.displayName, customerId: state.customerId },
+      {
+        uuid: parsed.orgUuid,
+        name: state.displayName,
+        customerId: state.customerId,
+        personal: state.personal,
+      },
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
     const changed = await recomputeOrgMemberships(db, org, parsed.orgUuid, transaction);
 
     await transaction.commit();
-    notifyProfilesUpdated(changed);
+    notifyProfilesUpdated([...changed, ...(await applyOrgRename(db, renamed))]);
 
     log.auth.info('SCIM: group created', {
       groupId: row.id,
@@ -238,7 +239,9 @@ const findGroups = async (req, res) => {
  * on success (RFC 7644 §3.5.1). Identity (org UUID + role) is immutable, only
  * members/displayName/extension data change. Unknown ids are a 404 (the auth
  * server recovers via POST/GET); PUT never creates. Refreshes the mirrored
- * org, then recomputes its memberships across ALL stored role groups with
+ * org, its name and storage directory following a changed displayName by the
+ * rules a new mirror is named with, then recomputes its memberships across
+ * ALL stored role groups with
  * highest-privilege-wins; member UUIDs unknown to BoxVault are ignored.
  */
 const putGroup = async (req, res) => {
@@ -280,17 +283,22 @@ const putGroup = async (req, res) => {
       { transaction }
     );
 
-    const org = await upsertExternalOrg(
+    const { organization: org, renamed } = await upsertExternalOrg(
       db,
       req.scimIssuer,
-      { uuid: row.org_uuid, name: state.displayName, customerId: state.customerId },
+      {
+        uuid: row.org_uuid,
+        name: state.displayName,
+        customerId: state.customerId,
+        personal: state.personal,
+      },
       transaction
     );
     await applyOrgProfile(org, state.profile, transaction);
     const changed = await recomputeOrgMemberships(db, org, row.org_uuid, transaction);
 
     await transaction.commit();
-    notifyProfilesUpdated(changed);
+    notifyProfilesUpdated([...changed, ...(await applyOrgRename(db, renamed))]);
 
     log.auth.info('SCIM: group updated', {
       groupId: row.id,

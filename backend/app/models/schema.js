@@ -1,4 +1,5 @@
 import { copyFileSync, existsSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { log } from '../utils/Logger.js';
 import { foldCase, pendingTables } from './fold-case.js';
 
@@ -127,17 +128,41 @@ const alignBackend = async sequelize => {
 };
 
 /**
+ * Give every organization that has no uuid its identity: the provider org
+ * UUID of a mirrored organization, a random UUID for a local one; a row that
+ * already carries one is never touched.
+ * @param {Object} sequelize - The open connection
+ * @returns {Promise<number>} The number of organizations identified
+ */
+const identifyOrganizations = async sequelize => {
+  const { organizations: Organization } = sequelize.models;
+  const pending = await Organization.findAll({
+    where: { uuid: null },
+    attributes: ['id', 'external_org_id'],
+  });
+  await inOrder(pending, organization =>
+    Organization.update(
+      { uuid: organization.external_org_id || randomUUID() },
+      { where: { id: organization.id } }
+    )
+  );
+  return pending.length;
+};
+
+/**
  * Bring the database to the shape the models name, the same way on SQLite
  * and on MariaDB or MySQL: the renamed columns first, so their values move
  * with them, then every missing table, column and index, never a removal or
- * a change of an existing column, then the alignment of the two backends.
+ * a change of an existing column, then the uuid of every organization that
+ * lacks one, then the alignment of the two backends.
  * @param {Object} sequelize - The open connection
- * @returns {Promise<{renamed: string[], folded: string[], widened: string[]}>} What changed
+ * @returns {Promise<{renamed: string[], identified: number, folded: string[], widened: string[]}>} What changed
  */
 const upgradeSchema = async sequelize => {
   const renamed = await renameColumns(sequelize);
   await sequelize.sync({ alter: { drop: false } });
-  return { renamed, ...(await alignBackend(sequelize)) };
+  const identified = await identifyOrganizations(sequelize);
+  return { renamed, identified, ...(await alignBackend(sequelize)) };
 };
 
 export { upgradeSchema, alignBackend, renameColumns };

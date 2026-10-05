@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for a BoxVault self-update request
+
+[Path]
+PathExists=/var/lib/boxvault/update.request
+Unit=boxvault-update.service
+
+[Install]
+WantedBy=multi-user.target

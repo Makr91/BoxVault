@@ -15,6 +15,7 @@ const RESERVED_SEGMENTS = [
   'private',
   'push',
   'search',
+  'opensearch.xml',
   'vm',
   'authenticator',
   'authenticator-method',

@@ -847,6 +847,10 @@ describe('SCIM receiver', () => {
 
     it('should apply members, the display name, a drifted customer id and a cleared profile', async () => {
       const healedCode = `C${hexId}`;
+      const oldPath = getSecureBoxPath(`Scim-Org-${uniqueId}`);
+      const newPath = getSecureBoxPath(`Scim-Org-Renamed-${uniqueId}`);
+      fs.mkdirSync(oldPath, { recursive: true });
+      fs.writeFileSync(path.join(oldPath, 'marker.txt'), 'x');
       const res = await scimPut(
         `/Groups/${ownerGroupId}`,
         groupBody('owner', {
@@ -866,8 +870,18 @@ describe('SCIM receiver', () => {
       });
 
       const org = await db.organization.findOne({ where: { external_org_id: orgUuid } });
-      expect(org.name).toBe(`Scim-Org-${uniqueId}`);
+      expect(org.name).toBe(`Scim-Org-Renamed-${uniqueId}`);
       expect(org.display_name).toBe(`Scim Org Renamed ${uniqueId}`);
+      expect(org.uuid).toBe(orgUuid);
+      expect(org.personal).toBe(true);
+      expect(fs.existsSync(oldPath)).toBe(false);
+      expect(fs.existsSync(path.join(newPath, 'marker.txt'))).toBe(true);
+      expect((await request(app).get(`/api/organization/Scim-Org-${uniqueId}`)).statusCode).toBe(
+        404
+      );
+      expect(
+        (await request(app).get(`/api/organization/Scim-Org-Renamed-${uniqueId}`)).statusCode
+      ).toBe(200);
       expect(org.org_code).toBe(healedCode);
       expect(org.email).toBe('');
       expect(org.emailHash).toBe('');
@@ -894,10 +908,69 @@ describe('SCIM receiver', () => {
       });
       const res = await request(app).get('/api/user/organizations').set('x-access-token', session);
       expect(res.statusCode).toBe(200);
-      const mirrored = res.body.find(entry => entry.organization.name === `Scim-Org-${uniqueId}`);
+      const mirrored = res.body.find(
+        entry => entry.organization.name === `Scim-Org-Renamed-${uniqueId}`
+      );
+      expect(mirrored.organization.uuid).toBe(orgUuid);
       expect(mirrored.personal).toBe(true);
       expect(mirrored.is_primary).toBe(true);
       expect(mirrored.role).toBe('member');
+
+      const profile = await request(app).get('/api/user').set('x-access-token', session);
+      expect(profile.statusCode).toBe(200);
+      expect(profile.body.organizations.find(entry => entry.uuid === orgUuid)).toEqual({
+        uuid: orgUuid,
+        name: `Scim-Org-Renamed-${uniqueId}`,
+        display_name: `Scim Org Renamed ${uniqueId}`,
+        roles: ['MEMBER'],
+        primary: true,
+        personal: true,
+        logo_url: null,
+        email_hash: null,
+      });
+    });
+
+    it('should take the suffixed name when the pushed displayName is taken or reserved, as creation would', async () => {
+      const holder = await db.organization.create({ name: `Scim-Held-${uniqueId}` });
+      const res = await scimPut(
+        `/Groups/${ownerGroupId}`,
+        groupBody('owner', {
+          externalId: undefined,
+          displayName: `Scim Held ${uniqueId}`,
+          members: [{ value: secondUserUuid }],
+          [GROUP_EXTENSION]: { customerId: `C${hexId}`, personal: true },
+        })
+      );
+      expect(res.statusCode).toBe(200);
+      const org = await db.organization.findOne({ where: { external_org_id: orgUuid } });
+      expect(org.name).toBe(`Scim-Held-${uniqueId}-${orgUuid.slice(0, 6)}`);
+
+      const reserved = await scimPut(
+        `/Groups/${ownerGroupId}`,
+        groupBody('owner', {
+          externalId: undefined,
+          displayName: 'Admin',
+          members: [{ value: secondUserUuid }],
+          [GROUP_EXTENSION]: { customerId: `C${hexId}`, personal: true },
+        })
+      );
+      expect(reserved.statusCode).toBe(200);
+      await org.reload();
+      expect(org.name).toBe(`Admin-${orgUuid.slice(0, 6)}`);
+
+      const back = await scimPut(
+        `/Groups/${ownerGroupId}`,
+        groupBody('owner', {
+          externalId: undefined,
+          displayName: `Scim Org Renamed ${uniqueId}`,
+          members: [{ value: secondUserUuid }],
+          [GROUP_EXTENSION]: { customerId: `C${hexId}`, personal: true },
+        })
+      );
+      expect(back.statusCode).toBe(200);
+      await org.reload();
+      expect(org.name).toBe(`Scim-Org-Renamed-${uniqueId}`);
+      await holder.destroy();
     });
   });
 

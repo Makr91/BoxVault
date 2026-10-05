@@ -164,7 +164,17 @@ describe('Search finders across the catalog', () => {
     const res = await search({ q: isoName, kinds: 'item' });
     expect(res.statusCode).toBe(200);
     expect(res.body.results).toEqual([
-      expect.objectContaining({ kind: 'item', collection: 'isos', org: orgName, name: isoName }),
+      expect.objectContaining({
+        kind: 'item',
+        id: `isos/${orgName}/${isoName}`,
+        collection: 'isos',
+        org: orgName,
+        name: isoName,
+        anchor: '',
+        source: null,
+        score: 3,
+        facets: { collection: 'isos' },
+      }),
     ]);
   });
 
@@ -174,26 +184,35 @@ describe('Search finders across the catalog', () => {
     expect(byName.body.results).toEqual([
       expect.objectContaining({
         kind: 'item',
+        id: `downloads/${orgName}/${downloadName}`,
         collection: 'downloads',
         org: orgName,
         name: downloadName,
         subtitle: `${orgName} · downloads`,
         matched: 'name',
+        facets: { collection: 'downloads' },
       }),
     ]);
     const byFamily = await search({ q: familyTerm, kinds: 'item' });
     expect(byFamily.body.results).toEqual([
-      expect.objectContaining({ collection: 'downloads', name: downloadName, matched: 'family' }),
+      expect.objectContaining({
+        collection: 'downloads',
+        name: downloadName,
+        matched: 'family',
+        score: 0,
+        highlight: { family: { text: familyTerm, spans: [[0, familyTerm.length]] } },
+      }),
     ]);
   });
 
   it('should find box, ISO and download versions', async () => {
     const res = await search({ q: `v${uniqueId}`, kinds: 'version' });
-    expect(res.body.results.map(row => [row.collection, row.version])).toEqual([
-      ['boxes', boxVersionNumber],
-      ['isos', isoVersionNumber],
-      ['downloads', releaseNumber],
+    expect(res.body.results.map(row => [row.collection, row.version, row.id])).toEqual([
+      ['boxes', boxVersionNumber, `boxes/${orgName}/${boxName}/${boxVersionNumber}`],
+      ['isos', isoVersionNumber, `isos/${orgName}/${isoName}/${isoVersionNumber}`],
+      ['downloads', releaseNumber, `downloads/${orgName}/${downloadName}/${releaseNumber}`],
     ]);
+    expect(res.body.results.map(row => row.score)).toEqual([2, 2, 2]);
     expect(res.body.results[1].subtitle).toBe(`${orgName} · isos · ${isoName}`);
     expect(res.body.results[2].subtitle).toBe(`${orgName} · downloads · ${downloadName}`);
   });
@@ -203,9 +222,11 @@ describe('Search finders across the catalog', () => {
     expect(patch.body.results).toEqual([
       expect.objectContaining({
         kind: 'provider',
+        id: `downloads/${orgName}/${downloadName}/${releaseNumber}/${patchName}`,
         collection: 'downloads',
         version: releaseNumber,
         provider: patchName,
+        anchor: '',
         subtitle: `${orgName} · downloads · ${downloadName} · ${releaseNumber}`,
       }),
     ]);
@@ -213,13 +234,16 @@ describe('Search finders across the catalog', () => {
     expect(byChecksum.body.results).toEqual([
       expect.objectContaining({
         kind: 'architecture',
+        id: `downloads/${orgName}/${downloadName}/${releaseNumber}/${patchName}/linux-x64`,
         collection: 'downloads',
         version: releaseNumber,
         provider: patchName,
         architecture: 'linux-x64',
+        anchor: downloadFileName,
         title: downloadFileName,
         subtitle: `${orgName} · downloads · ${downloadName} · ${releaseNumber} · ${patchName}`,
         matched: 'checksum',
+        highlight: { checksum: { text: downloadChecksum, spans: [[0, 10]] } },
       }),
     ]);
     const byFileName = await search({ q: downloadFileName, kinds: 'architecture' });
@@ -238,8 +262,23 @@ describe('Search finders across the catalog', () => {
     expect(byChain.body.results[0].matched).toBe('download');
 
     const compact = await search({ q: `notes 14.5.1 fp1 ${uniqueId}`, kinds: 'architecture' });
+    const compactName = `Notes_1451FP1_${uniqueId}.exe`;
     expect(compact.body.results).toEqual([
-      expect.objectContaining({ architecture: 'win-x64', matched: 'fileName' }),
+      expect.objectContaining({
+        architecture: 'win-x64',
+        anchor: compactName,
+        matched: 'fileName',
+        highlight: {
+          fileName: {
+            text: compactName,
+            spans: [
+              [0, 5],
+              [10, 13],
+              [14, 14 + uniqueId.length],
+            ],
+          },
+        },
+      }),
     ]);
     const reordered = await search({ q: `${uniqueId} NOTES`, kinds: 'architecture' });
     expect(reordered.body.results).toEqual([expect.objectContaining({ architecture: 'win-x64' })]);
@@ -277,13 +316,22 @@ describe('Search finders across the catalog', () => {
   it('should find artifacts by checksum prefix', async () => {
     const boxHit = await search({ q: boxChecksum.slice(0, 10), kinds: 'artifact' });
     expect(boxHit.body.results).toEqual([
-      expect.objectContaining({ collection: 'boxes', title: 'vagrant.box', matched: 'checksum' }),
+      expect.objectContaining({
+        id: `boxes/${orgName}/${boxName}/${boxVersionNumber}/${providerName}/${architectureName}/vagrant.box`,
+        collection: 'boxes',
+        anchor: 'vagrant.box',
+        title: 'vagrant.box',
+        matched: 'checksum',
+      }),
     ]);
     const isoHit = await search({ q: isoChecksum.slice(0, 10), kinds: 'artifact' });
     expect(isoHit.body.results).toEqual([
       expect.objectContaining({
+        id: `isos/${orgName}/${isoName}/${isoVersionNumber}//amd64/image-${uniqueId}.iso`,
         collection: 'isos',
+        provider: '',
         architecture: 'amd64',
+        anchor: `image-${uniqueId}.iso`,
         title: `image-${uniqueId}.iso`,
         matched: 'checksum',
       }),
@@ -314,7 +362,14 @@ describe('Search finders across the catalog', () => {
   it('should answer the members of the organizations the caller manages', async () => {
     const res = await search({ q: member.username, kinds: 'user' }, ownerToken);
     expect(res.body.results).toEqual([
-      expect.objectContaining({ kind: 'user', org: orgName, name: member.username }),
+      expect.objectContaining({
+        kind: 'user',
+        id: `${orgName}/${member.username}`,
+        collection: null,
+        org: orgName,
+        name: member.username,
+        facets: {},
+      }),
     ]);
   });
 });

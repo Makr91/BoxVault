@@ -6,12 +6,14 @@ const originalFs = require('fs');
 const originalChildProcess = require('child_process');
 const originalHttps = require('https');
 const originalHttp = require('http');
+const { version: packageVersion } = require('../package.json');
 
 // Import actual config loader to use in mocks
 const actualConfigLoader = await import('../app/utils/config-loader.js');
 
 // Mocks
 const mockExec = jest.fn((cmd, cb) => originalChildProcess.exec(cmd, cb));
+const mockWriteFile = jest.fn().mockResolvedValue(undefined);
 
 // Mock statfs for fs.promises (must return a Promise)
 const mockStatfs = jest.fn().mockResolvedValue({
@@ -52,6 +54,7 @@ jest.unstable_mockModule('fs', () => ({
   promises: {
     ...originalFs.promises,
     statfs: mockStatfs,
+    writeFile: mockWriteFile,
   },
   default: {
     ...originalFs,
@@ -59,6 +62,7 @@ jest.unstable_mockModule('fs', () => ({
     promises: {
       ...originalFs.promises,
       statfs: mockStatfs,
+      writeFile: mockWriteFile,
     },
   },
 }));
@@ -209,10 +213,10 @@ describe('System API', () => {
     });
   });
 
-  describe('GET /api/system/update-check', () => {
+  describe('GET /api/app/updates/check', () => {
     it('should return update status for admin', async () => {
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
@@ -220,12 +224,13 @@ describe('System API', () => {
       expect(res.body).toHaveProperty('update_available');
       expect(res.body).toHaveProperty('current_version');
       expect(res.body).toHaveProperty('latest_version');
+      expect(res.body).toHaveProperty('release_url');
+      expect(res.body.release_date).toBeNull();
+      expect(res.body.changelog).toBe('https://github.com/Makr91/BoxVault/releases');
     });
 
     it('should fail for non-admin user', async () => {
-      const res = await request(app)
-        .get('/api/system/update-check')
-        .set('x-access-token', userToken);
+      const res = await request(app).get('/api/app/updates/check').set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(403);
     });
@@ -237,16 +242,20 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
       expect(res.body.is_apt_managed).toBe(false);
       expect(res.body.update_available).toBe(false);
+      expect(res.body.current_version).toBe(packageVersion);
+      expect(res.body.latest_version).toBeNull();
+      expect(res.body.release_url).toBeNull();
+      expect(res.body.release_date).toBeNull();
+      expect(res.body.changelog).toBe('https://github.com/Makr91/BoxVault/releases');
     });
 
     it('should check repository URL if configured', async () => {
-      // Mock config to return repository URL
       mockConfigLoader.loadConfig.mockImplementation(name => {
         if (name === 'app') {
           return {
@@ -258,14 +267,12 @@ describe('System API', () => {
         return actualConfigLoader.loadConfig(name);
       });
 
-      // Mock exec to return installed version
       mockExec.mockImplementation((cmd, cb) => {
         if (cmd.includes('dpkg-query')) {
           cb(null, '1.0.0', '');
         }
       });
 
-      // Mock HTTPS response for Packages file
       mockHttpsGet.mockImplementation((url, cb) => {
         void url;
         const { EventEmitter } = require('events');
@@ -284,12 +291,15 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
       expect(res.body.update_available).toBe(true);
+      expect(res.body.is_apt_managed).toBe(true);
+      expect(res.body.current_version).toBe('1.0.0');
       expect(res.body.latest_version).toBe('1.2.0');
+      expect(res.body.release_url).toBe('https://github.com/Makr91/BoxVault/releases/tag/v1.2.0');
     });
 
     it('should handle repository URL check failure and fallback', async () => {
@@ -308,11 +318,10 @@ describe('System API', () => {
         if (cmd.includes('dpkg-query')) {
           cb(null, '1.0.0', '');
         } else if (cmd.includes('apt-cache')) {
-          cb(null, '1.0.0', ''); // Fallback finds no update
+          cb(null, '1.0.0', '');
         }
       });
 
-      // Mock HTTPS error
       mockHttpsGet.mockImplementation((url, cb) => {
         void url;
         void cb;
@@ -325,11 +334,11 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.update_available).toBe(false); // Fallback used
+      expect(res.body.update_available).toBe(false);
     });
 
     it('should handle synchronous error in https.get callback', async () => {
@@ -363,9 +372,9 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
-      expect(res.statusCode).toBe(200); // Should not crash
+      expect(res.statusCode).toBe(200);
     });
 
     it('should handle repository URL ending with slash', async () => {
@@ -391,7 +400,6 @@ describe('System API', () => {
         mockRes.statusCode = 200;
         mockRes.resume = jest.fn();
 
-        // Verify URL has Packages appended
         if (url === 'https://repo.example.com/debian/Packages') {
           cb(mockRes);
           process.nextTick(() => {
@@ -407,7 +415,7 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
       expect(res.body.latest_version).toBe('1.0.1');
@@ -420,7 +428,7 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
 
       expect(res.statusCode).toBe(200);
@@ -456,7 +464,7 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
       expect(res.body.update_available).toBe(false);
@@ -497,7 +505,7 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
       expect(res.body.update_available).toBe(false);
@@ -538,7 +546,7 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
       expect(res.body.latest_version).toBe('1.2.0');
@@ -572,7 +580,6 @@ describe('System API', () => {
         cb(mockRes);
 
         process.nextTick(() => {
-          // Package exists but Version line is missing/malformed
           mockRes.emit('data', 'Package: boxvault\nInvalidVer: 1.2.0\n\n');
           mockRes.emit('end');
         });
@@ -581,13 +588,242 @@ describe('System API', () => {
       });
 
       const res = await request(app)
-        .get('/api/system/update-check')
+        .get('/api/app/updates/check')
         .set('x-access-token', adminToken);
       expect(res.statusCode).toBe(200);
-      // Should fall back to apt-cache or return unknown if apt-cache also fails/returns same
-      // Since we mocked exec to return 1.0.0 for installed, and didn't mock apt-cache specifically to return something else,
-      // it might return updateAvailable: false.
       expect(res.body.update_available).toBe(false);
+    });
+
+    it('should detect an update across Debian revisions', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(name => actualConfigLoader.loadConfig(name));
+      mockExec.mockImplementation((cmd, cb) => {
+        if (cmd.includes('dpkg-query')) {
+          cb(null, '1.0.0-1', '');
+        } else if (cmd.includes('apt-cache')) {
+          cb(null, '1.2.0-1', '');
+        }
+      });
+
+      const res = await request(app)
+        .get('/api/app/updates/check')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.is_apt_managed).toBe(true);
+      expect(res.body.update_available).toBe(true);
+      expect(res.body.current_version).toBe('1.0.0-1');
+      expect(res.body.latest_version).toBe('1.2.0-1');
+      expect(res.body.release_url).toBe('https://github.com/Makr91/BoxVault/releases/tag/v1.2.0');
+    });
+
+    it('should resolve a boxvault-dev install and read its own published version', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(name => {
+        if (name === 'app') {
+          return {
+            boxvault: {
+              repository_packages_url: 'https://repo.example.com/Packages',
+            },
+          };
+        }
+        return actualConfigLoader.loadConfig(name);
+      });
+
+      mockExec.mockImplementation((cmd, cb) => {
+        if (cmd.endsWith(' boxvault-dev')) {
+          cb(null, '1.0.0', '');
+        } else {
+          cb(new Error('not installed'), '', 'no packages found matching boxvault');
+        }
+      });
+
+      mockHttpsGet.mockImplementation((url, cb) => {
+        void url;
+        const { EventEmitter } = require('events');
+        const mockRes = new EventEmitter();
+        mockRes.statusCode = 200;
+        mockRes.resume = jest.fn();
+
+        cb(mockRes);
+
+        process.nextTick(() => {
+          mockRes.emit(
+            'data',
+            'Package: boxvault\nVersion: 9.9.9\n\nPackage: boxvault-dev\nVersion: 1.2.0\n\n'
+          );
+          mockRes.emit('end');
+        });
+
+        return { on: jest.fn() };
+      });
+
+      const res = await request(app)
+        .get('/api/app/updates/check')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.is_apt_managed).toBe(true);
+      expect(res.body.current_version).toBe('1.0.0');
+      expect(res.body.latest_version).toBe('1.2.0');
+      expect(res.body.update_available).toBe(true);
+      expect(mockExec).toHaveBeenCalledWith(
+        expect.stringContaining('dpkg-query'),
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('POST /api/app/updates/apply', () => {
+    const repositoryConfig = name => {
+      if (name === 'app') {
+        return {
+          boxvault: {
+            repository_packages_url: 'https://repo.example.com/Packages',
+          },
+        };
+      }
+      return actualConfigLoader.loadConfig(name);
+    };
+
+    const publishVersion = published => {
+      mockHttpsGet.mockImplementation((url, cb) => {
+        void url;
+        const { EventEmitter } = require('events');
+        const mockRes = new EventEmitter();
+        mockRes.statusCode = 200;
+        mockRes.resume = jest.fn();
+
+        cb(mockRes);
+
+        process.nextTick(() => {
+          mockRes.emit('data', `Package: boxvault\nVersion: ${published}\n\n`);
+          mockRes.emit('end');
+        });
+
+        return { on: jest.fn() };
+      });
+    };
+
+    beforeEach(() => {
+      mockWriteFile.mockResolvedValue(undefined);
+    });
+
+    it('should fail for non-admin user', async () => {
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', userToken);
+
+      expect(res.statusCode).toBe(403);
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('should refuse when not apt managed', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(name => actualConfigLoader.loadConfig(name));
+      mockExec.mockImplementation((cmd, cb) => {
+        void cmd;
+        cb(new Error('Command failed'), '', 'Error');
+      });
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a boxvault-dev install', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(name => actualConfigLoader.loadConfig(name));
+      mockExec.mockImplementation((cmd, cb) => {
+        if (cmd.endsWith(' boxvault-dev')) {
+          cb(null, '1.0.0', '');
+        } else if (cmd.includes('apt-cache')) {
+          cb(null, '1.2.0', '');
+        } else {
+          cb(new Error('not installed'), '', 'no packages found matching boxvault');
+        }
+      });
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('should refuse when already up to date', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(repositoryConfig);
+      mockExec.mockImplementation((cmd, cb) => {
+        void cmd;
+        cb(null, '1.2.0', '');
+      });
+      publishVersion('1.2.0');
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('should refuse when the update watch is not active', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(repositoryConfig);
+      mockExec.mockImplementation((cmd, cb) => {
+        if (cmd.includes('systemctl is-active')) {
+          cb(new Error('inactive'), 'inactive', '');
+        } else {
+          cb(null, '1.0.0', '');
+        }
+      });
+      publishVersion('1.2.0');
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/bad-request');
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('should write the update request when an update is available', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(repositoryConfig);
+      mockExec.mockImplementation((cmd, cb) => {
+        void cmd;
+        cb(null, '1.0.0', '');
+      });
+      publishVersion('1.2.0');
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(202);
+      expect(res.body.task_id).toBeNull();
+      expect(res.body.target_version).toBe('1.2.0');
+      expect(typeof res.body.message).toBe('string');
+      expect(mockWriteFile).toHaveBeenCalledWith('/var/lib/boxvault/update.request', '1.2.0');
+    });
+
+    it('should answer 500 when the update request cannot be written', async () => {
+      mockConfigLoader.loadConfig.mockImplementation(repositoryConfig);
+      mockExec.mockImplementation((cmd, cb) => {
+        void cmd;
+        cb(null, '1.0.0', '');
+      });
+      publishVersion('1.2.0');
+      mockWriteFile.mockRejectedValueOnce(new Error('EACCES'));
+
+      const res = await request(app)
+        .post('/api/app/updates/apply')
+        .set('x-access-token', adminToken);
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body.type).toBe('https://auth.startcloud.com/probs/internal');
     });
   });
 });

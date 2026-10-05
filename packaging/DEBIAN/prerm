@@ -12,4 +12,9 @@ if systemctl is-enabled --quiet boxvault; then
     systemctl disable boxvault
 fi
 
+if [ "$1" = "remove" ] && systemctl is-enabled --quiet boxvault-update.path; then
+    echo "Disabling BoxVault update watch..."
+    systemctl disable --now boxvault-update.path
+fi
+
 #DEBHELPER#

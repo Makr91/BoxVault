@@ -66,6 +66,7 @@ import systemRoutes from './app/routes/system.routes.js';
 import clientErrorsRoutes from './app/routes/client_errors.routes.js';
 import scimRoutes from './app/routes/scim.routes.js';
 import searchRoutes from './app/routes/search.routes.js';
+import { opensearch } from './app/controllers/opensearch.controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -219,6 +220,7 @@ app.use((req, res, next) => {
 app.get('/index.html', spaLimiter, uiIndex(404));
 app.get('/callback/index.html', spaLimiter, uiIndex(404));
 app.get('/manifest.json', spaLimiter, uiManifest);
+app.get('/opensearch.xml', spaLimiter, opensearch);
 
 // Configure static file serving with proper content types first
 app.use(

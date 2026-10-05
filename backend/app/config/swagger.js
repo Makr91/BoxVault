@@ -499,16 +499,35 @@ const options = {
               description: 'Unique organization identifier',
               example: 1,
             },
+            uuid: {
+              type: 'string',
+              description:
+                "Immutable organization identity: the identity provider's uuid for a mirrored organization, a random uuid minted at creation for a local one",
+              example: '3f1c2b9e-6a4d-4c1e-9b7a-2d8e5f0a1c34',
+            },
             name: {
               type: 'string',
-              description: 'Organization name',
+              description:
+                "Organization name, the URL segment; a mirrored organization's follows its rename at the identity provider",
+              example: 'Acme-Corporation',
+            },
+            display_name: {
+              type: 'string',
+              description: 'Human-readable organization name',
               example: 'Acme Corporation',
+              nullable: true,
             },
             description: {
               type: 'string',
               description: 'Organization description',
               example: 'Technology company specializing in virtual infrastructure',
               nullable: true,
+            },
+            personal: {
+              type: 'boolean',
+              description:
+                'Whether the identity provider marks this organization as a personal org',
+              example: false,
             },
             org_code: {
               type: 'string',
@@ -542,6 +561,56 @@ const options = {
               format: 'date-time',
               description: 'Last update timestamp',
               example: '2025-01-04T17:19:19.921Z',
+            },
+          },
+        },
+        Membership: {
+          type: 'object',
+          description:
+            "One membership in the identity provider's shape, as the sign-in, refresh and profile answers and the session token's organizations claim carry it",
+          properties: {
+            uuid: {
+              type: 'string',
+              description: "The organization's immutable uuid",
+              example: '3f1c2b9e-6a4d-4c1e-9b7a-2d8e5f0a1c34',
+            },
+            name: {
+              type: 'string',
+              description: "The organization's name, the URL segment",
+              example: 'Acme-Corporation',
+            },
+            display_name: {
+              type: 'string',
+              nullable: true,
+              description: "The organization's human-readable name",
+              example: 'Acme Corporation',
+            },
+            roles: {
+              type: 'array',
+              items: { type: 'string', enum: ['OWNER', 'ADMIN', 'MEMBER', 'GUEST'] },
+              description: 'The membership role, upper-cased',
+              example: ['OWNER'],
+            },
+            primary: {
+              type: 'boolean',
+              description: "Whether this is the user's primary organization",
+              example: true,
+            },
+            personal: {
+              type: 'boolean',
+              description:
+                'Whether the identity provider marks this organization as a personal org',
+              example: false,
+            },
+            logo_url: {
+              type: 'string',
+              nullable: true,
+              description: "The organization's stored logo URL",
+            },
+            email_hash: {
+              type: 'string',
+              nullable: true,
+              description: "SHA-256 hex of the organization's email, for its Gravatar",
             },
           },
         },

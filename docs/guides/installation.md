@@ -50,6 +50,8 @@ The package installs:
 | `/opt/boxvault/scripts/certbot-deploy-hook.sh` | the Certbot renewal hook                                                                                                                   |
 | `/etc/boxvault/`                              | shipped in the payload; `app.config.yaml`, `auth.config.yaml`, `db.config.yaml`, `mail.config.yaml` copied from the templates where no file of that name exists, an empty `setup.token` on a fresh install, `ssl/` created by the service |
 | `/etc/systemd/system/boxvault.service`        | the unit                                                                                                                                   |
+| `/etc/systemd/system/boxvault-update.path`    | the root-owned watch on `/var/lib/boxvault/update.request`, enabled by `postinst`, disabled by `prerm` on removal                            |
+| `/etc/systemd/system/boxvault-update.service` | the oneshot the watch starts: removes the request and runs `apt-get install -y --only-upgrade boxvault`                                     |
 | `/var/lib/boxvault/`                          | the SQLite database, uploads and box storage                                                                                               |
 | `/var/log/boxvault/`                          | log files                                                                                                                                  |
 
@@ -82,7 +84,7 @@ There is no `ExecReload`; a configuration change that the schema marks `requires
 
 ### Upgrade
 
-Install the new `.deb` the same way. `postinst` detects the upgrade, runs `scripts/migrate-config.js` as the `boxvault` user against `/etc/boxvault/` (each file is moved to its schema's version, only the keys a migration changes are rewritten, the previous copy kept as `.bak`), leaves the database to the service, which upgrades its own schema at the next start, then asks for `systemctl restart boxvault`.
+Install the new `.deb` the same way. `postinst` detects the upgrade, runs `scripts/migrate-config.js` as the `boxvault` user against `/etc/boxvault/` (each file is moved to its schema's version, only the keys a migration changes are rewritten, the previous copy kept as `.bak`), leaves the database to the service, which upgrades its own schema at the next start, then asks for `systemctl restart boxvault`. The Update page of the admin section asks the package's `boxvault-update.path` unit to run `apt-get install --only-upgrade boxvault` as root, outside the service, so the service may be restarted by the upgrade.
 
 ### Remove
 

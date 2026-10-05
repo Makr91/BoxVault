@@ -99,6 +99,8 @@ jobs:
 
           # Systemd service
           cp packaging/DEBIAN/systemd/boxvault.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
+          cp packaging/DEBIAN/systemd/boxvault-update.path "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
+          cp packaging/DEBIAN/systemd/boxvault-update.service "${PACKAGE_NAME}_${VERSION}_${ARCH}/etc/systemd/system/"
 
           # DEBIAN control scripts
           cp packaging/DEBIAN/{preinst,postinst,prerm,postrm} "${PACKAGE_NAME}_${VERSION}_${ARCH}/DEBIAN/"

@@ -399,6 +399,14 @@
     "hyperweaverNotConfigured": "Hyperweaver is not configured.",
     "ticketSystemNotConfigured": "Ticket system not configured."
   },
+  "updates": {
+    "notAptManaged": "BoxVault was not installed from its APT repository on this host, so it cannot update itself.",
+    "devPackage": "This host runs boxvault-dev, which is upgraded by hand; only the boxvault package updates itself.",
+    "upToDate": "BoxVault {{version}} is already the latest version.",
+    "watchInactive": "The boxvault-update.path unit is not active on this host, so the update cannot be applied.",
+    "launchFailed": "The update could not be started.",
+    "launched": "Updating to {{version}}; the service restarts when the upgrade finishes."
+  },
   "favorites": {
     "oidcRequired": "OIDC authentication required to manage favorites",
     "saved": "Favorites saved successfully",

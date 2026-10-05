@@ -385,6 +385,37 @@ describe('Service Account API', () => {
     });
   });
 
+  describe('POST /api/auth/signin as a service account', () => {
+    it("should answer its one organization at its effective role in the identity provider's shape", async () => {
+      const created = await request(app)
+        .post('/api/service-accounts')
+        .set('x-access-token', adminToken)
+        .send({ description: 'Signin SA', expiration_days: 30, organization_id: testOrg.id });
+      expect(created.statusCode).toBe(201);
+
+      const res = await request(app)
+        .post('/api/auth/signin')
+        .send({ username: created.body.username, password: created.body.token });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.is_service_account).toBe(true);
+      expect(res.body.organization).toBe(orgName);
+      expect(res.body.organizations).toEqual([
+        {
+          uuid: testOrg.uuid,
+          name: orgName,
+          display_name: null,
+          roles: ['MEMBER'],
+          primary: true,
+          personal: false,
+          logo_url: null,
+          email_hash: null,
+        },
+      ]);
+      expect(jwt.decode(res.body.access_token).organizations).toEqual(res.body.organizations);
+    });
+  });
+
   describe('GET /api/service-accounts', () => {
     it('should list service accounts', async () => {
       const res = await request(app).get('/api/service-accounts').set('x-access-token', adminToken);
@@ -412,6 +443,7 @@ describe('Service Account API', () => {
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.some(o => o.id === testOrg.id)).toBe(true);
       expect(res.body.every(o => ['member', 'admin', 'owner'].includes(o.role))).toBe(true);
+      expect(res.body.find(o => o.id === testOrg.id).uuid).toBe(testOrg.uuid);
     });
 
     it('should leave a guest seat out of the list', async () => {
