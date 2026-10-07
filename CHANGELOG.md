@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.107.0](https://github.com/Makr91/BoxVault/compare/v0.106.1...v0.107.0) (2026-10-07)
+
+
+### Features
+
+* a download can be fetched from a link into the pending store, its checksum verified as the bytes arrive, private hosts refused unless allowed ([1b9d1de](https://github.com/Makr91/BoxVault/commit/1b9d1de860eed777f79badda91d1c4b1435f01fa))
+* open BoxVault tabs receive every inbox change live, relayed from the identity provider's event stream ([812ed36](https://github.com/Makr91/BoxVault/commit/812ed36a603a6b851c54177e74b0366e108c0f65))
+* organizations carry a uuid, memberships take the identity provider's shape, a mirror follows its rename, a refused browser navigation draws the error page, the status lists landing, update and search, and search answers the navbar contract ([d2c00a6](https://github.com/Makr91/BoxVault/commit/d2c00a67ce142892b033e56e5cda35cb95e60ad9))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.54.0 ([939ed78](https://github.com/Makr91/BoxVault/commit/939ed7875fe6df3f178b4f065f680348a23dc9b9))
+* bump startcloud-ui to v0.54.0 ([beabde8](https://github.com/Makr91/BoxVault/commit/beabde89e84c4d65e784748bc7afac7bcea2bf5d))
+* every 401 names its Bearer challenge, and the notification relay forgets spent tokens and abandoned relays ([fbdb5c3](https://github.com/Makr91/BoxVault/commit/fbdb5c3358378dbce482c7219abd0132e8d638a9))
+* the security audits pass while braces and sprintf-js have no patched release, both reached only through dev dependencies ([8f2df08](https://github.com/Makr91/BoxVault/commit/8f2df0898e00a2fab6ee117b5df23c478a3f9917))
+* the security audits pass while braces and sprintf-js have no patched release, both reached only through dev dependencies ([d6560db](https://github.com/Makr91/BoxVault/commit/d6560db5205c87de56f80b50d890bed576db9095))
+
 ## [0.106.1](https://github.com/Makr91/BoxVault/compare/v0.106.0...v0.106.1) (2026-10-01)
 
 
