@@ -666,18 +666,20 @@ describe('Authentication API', () => {
       });
       const role = await db.role.findOne({ where: { name: 'user' } });
       await lapsedUser.setRoles([role]);
-      const lapsedJwt = jwt.sign(
-        {
-          id: lapsedUser.id,
-          provider: 'oidc-testprovider',
-          oidc_expires_at: Date.now() + 60 * 60 * 1000,
-          oidc_refresh_token: 'still-good-refresh-token',
-          iat: Math.floor(Date.now() / 1000) - 7200,
-          exp: Math.floor(Date.now() / 1000) - 3600,
-        },
-        'test-secret',
-        TEST_JWT_CLAIMS
-      );
+      const lapsedWith = refreshToken =>
+        jwt.sign(
+          {
+            id: lapsedUser.id,
+            provider: 'oidc-testprovider',
+            oidc_expires_at: Date.now() + 60 * 60 * 1000,
+            oidc_refresh_token: refreshToken,
+            iat: Math.floor(Date.now() / 1000) - 7200,
+            exp: Math.floor(Date.now() / 1000) - 3600,
+          },
+          'test-secret',
+          TEST_JWT_CLAIMS
+        );
+      const lapsedJwt = lapsedWith('still-good-refresh-token');
 
       const restore = await updateConfig('auth', config => {
         config.auth.oidc = config.auth.oidc || {};
@@ -720,14 +722,20 @@ describe('Authentication API', () => {
         });
         const refused = await request(app)
           .post('/api/auth/refresh-token')
-          .set('x-access-token', lapsedJwt);
+          .set('x-access-token', lapsedWith('revoked-refresh-token'));
         expect(refused.statusCode).toBe(401);
 
         mockAxios.post.mockRejectedValueOnce({ response: { status: 503, data: {} } });
         const down = await request(app)
           .post('/api/auth/refresh-token')
-          .set('x-access-token', lapsedJwt);
+          .set('x-access-token', lapsedWith('unanswered-refresh-token'));
         expect(down.statusCode).toBe(502);
+
+        const repeated = await request(app)
+          .post('/api/auth/refresh-token')
+          .set('x-access-token', lapsedJwt);
+        expect(repeated.statusCode).toBe(200);
+        expect(jwt.decode(repeated.body.access_token).oidc_access_token).toBe('renewed-access');
 
         const localLapsed = jwt.sign(
           {

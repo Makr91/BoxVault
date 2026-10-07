@@ -398,9 +398,8 @@ describe('Notifications API', () => {
       expect(unreachable.body.title).toBe('The service behind this request could not be reached.');
     });
 
-    it('should mark one notification read and refresh the unread count', async () => {
+    it('should mark one notification read without reading the unread count', async () => {
       axiosPost.mockResolvedValue({ status: 200, data: { read: true } });
-      axiosGet.mockResolvedValue({ status: 200, data: { count: 1 } });
       const res = await request(app)
         .post('/api/notifications/n%2F1/read')
         .set('x-access-token', oidcToken);
@@ -411,15 +410,11 @@ describe('Notifications API', () => {
         null,
         expect.any(Object)
       );
-      expect(axiosGet).toHaveBeenCalledWith(
-        `${ISSUER}/api/notifications/unread-count`,
-        expect.any(Object)
-      );
+      expect(axiosGet).not.toHaveBeenCalled();
     });
 
-    it('should mark everything read even when the count refresh fails', async () => {
+    it('should mark everything read', async () => {
       axiosPost.mockResolvedValue({ status: 200, data: { updated: 3 } });
-      axiosGet.mockRejectedValue(new Error('count down'));
       const res = await request(app)
         .post('/api/notifications/read-all')
         .set('x-access-token', oidcToken);
@@ -430,11 +425,11 @@ describe('Notifications API', () => {
         null,
         expect.any(Object)
       );
+      expect(axiosGet).not.toHaveBeenCalled();
     });
 
     it('should delete one notification', async () => {
       axiosDelete.mockResolvedValue({ status: 204 });
-      axiosGet.mockResolvedValue({ status: 200, data: {} });
       const res = await request(app)
         .delete('/api/notifications/n1')
         .set('x-access-token', oidcToken);
@@ -443,20 +438,17 @@ describe('Notifications API', () => {
         `${ISSUER}/api/notifications/n1`,
         expect.any(Object)
       );
+      expect(axiosGet).not.toHaveBeenCalled();
     });
 
-    it('should clear the inbox and refresh the unread count', async () => {
+    it('should clear the inbox without reading the unread count', async () => {
       axiosDelete.mockResolvedValue({ status: 204 });
-      axiosGet.mockResolvedValue({ status: 200, data: { count: 0 } });
       const res = await request(app).delete('/api/notifications').set('x-access-token', oidcToken);
       expect(res.statusCode).toBe(204);
       expect(axiosDelete).toHaveBeenCalledWith(`${ISSUER}/api/notifications`, {
         headers: { Authorization: 'Bearer idp-access-token', 'Content-Type': 'application/json' },
       });
-      expect(axiosGet).toHaveBeenCalledWith(
-        `${ISSUER}/api/notifications/unread-count`,
-        expect.any(Object)
-      );
+      expect(axiosGet).not.toHaveBeenCalled();
     });
 
     it('should require an identity-provider session to clear the inbox', async () => {

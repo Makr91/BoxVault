@@ -2,7 +2,6 @@ import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { loadConfig } from '../utils/config-loader.js';
 import { log } from '../utils/Logger.js';
-import { notifyUnreadCount } from '../utils/events.js';
 import { sendHubNotification } from '../utils/notifyHub.js';
 import { resolveUserRecipients } from '../utils/notifyRecipients.js';
 import { getVapidPublicKey, sendPushToUsers } from '../utils/webPush.js';
@@ -53,15 +52,6 @@ const respondAuthServerError = (req, res, error) => {
     .status(response.status)
     .type(response.headers?.['content-type'] || 'application/json')
     .send(response.data ?? {});
-};
-
-const pushUnreadCount = async (req, headers) => {
-  try {
-    const response = await axios.get(buildNotificationsUrl(req, '/unread-count'), { headers });
-    notifyUnreadCount(req.userId, response.data?.count ?? 0);
-  } catch (error) {
-    log.app.warn('Unread count refresh failed', { error: error.message });
-  }
 };
 
 const refreshableClaims = req => {
@@ -131,23 +121,14 @@ export const forwardToProvider = async (req, res, sendRequest) => {
  * @param {import('express').Request} req - The request, with the session resolved
  * @param {import('express').Response} res - The response
  * @param {function(Object): Promise<{status: number, data: *}>} sendRequest - Sends the upstream request with the bearer headers
- * @param {{pushCount?: boolean}} [options] - Whether to push the unread count on the event stream afterwards
  * @returns {Promise<void>}
  */
-export const proxyNotificationRequest = async (
-  req,
-  res,
-  sendRequest,
-  { pushCount = false } = {}
-) => {
+export const proxyNotificationRequest = async (req, res, sendRequest) => {
   const forwarded = await forwardToProvider(req, res, sendRequest);
   if (!forwarded) {
     return;
   }
   res.status(forwarded.response.status).json(forwarded.response.data || {});
-  if (pushCount) {
-    await pushUnreadCount(req, forwarded.headers);
-  }
 };
 
 const buildListQuery = query => {
@@ -410,33 +391,22 @@ export const getUnreadCount = (req, res) =>
   );
 
 export const markNotificationRead = (req, res) =>
-  proxyNotificationRequest(
-    req,
-    res,
-    headers =>
-      axios.post(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}/read`), null, {
-        headers,
-      }),
-    { pushCount: true }
+  proxyNotificationRequest(req, res, headers =>
+    axios.post(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}/read`), null, {
+      headers,
+    })
   );
 
 export const markAllNotificationsRead = (req, res) =>
-  proxyNotificationRequest(
-    req,
-    res,
-    headers => axios.post(buildNotificationsUrl(req, '/read-all'), null, { headers }),
-    { pushCount: true }
+  proxyNotificationRequest(req, res, headers =>
+    axios.post(buildNotificationsUrl(req, '/read-all'), null, { headers })
   );
 
 export const deleteNotification = (req, res) =>
-  proxyNotificationRequest(
-    req,
-    res,
-    headers =>
-      axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), {
-        headers,
-      }),
-    { pushCount: true }
+  proxyNotificationRequest(req, res, headers =>
+    axios.delete(buildNotificationsUrl(req, `/${encodeURIComponent(req.params.id)}`), {
+      headers,
+    })
   );
 
 /**
@@ -444,7 +414,7 @@ export const deleteNotification = (req, res) =>
  * /api/notifications:
  *   delete:
  *     summary: Clear the caller's inbox
- *     description: Forwards to the notification hub's DELETE /api/notifications with the session's OIDC access token and answers the hub's status and body unmapped, then pushes the unread count on the event stream.
+ *     description: Forwards to the notification hub's DELETE /api/notifications with the session's OIDC access token and answers the hub's status and body unmapped; the hub's inbox-cleared and unread-count reach the person's open tabs through the event stream's notifications topic.
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -471,9 +441,6 @@ export const deleteNotification = (req, res) =>
  *               $ref: '#/components/schemas/Problem'
  */
 export const deleteAllNotifications = (req, res) =>
-  proxyNotificationRequest(
-    req,
-    res,
-    headers => axios.delete(buildNotificationsUrl(req), { headers }),
-    { pushCount: true }
+  proxyNotificationRequest(req, res, headers =>
+    axios.delete(buildNotificationsUrl(req), { headers })
   );

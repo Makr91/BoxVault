@@ -157,26 +157,26 @@ const broadcast = (topic, event, data, userId = null) => {
 };
 
 /**
- * Push session-terminated to every stream of a user and close them.
- * @param {number} userId - The user whose sessions were revoked
+ * End every stream of a user without a frame; each tab reconnects with its
+ * Last-Event-ID and the ring replays what it missed.
+ * @param {number} userId - The user whose streams end
  */
-const notifySessionTerminated = userId => {
-  const delivered = broadcast('session', 'session-terminated', {}, userId);
+const closeUserStreams = userId => {
   for (const subscriber of subscribers) {
     if (subscriber.userId === userId) {
       subscriber.res.end();
     }
   }
-  log.auth.info('Session-terminated event pushed', { userId, connections: delivered });
 };
 
 /**
- * Push the hub's unread count to every stream of a user.
- * @param {number} userId - The user whose count changed
- * @param {number} count - The unread count
+ * Push session-terminated to every stream of a user and close them.
+ * @param {number} userId - The user whose sessions were revoked
  */
-const notifyUnreadCount = (userId, count) => {
-  broadcast('notifications', 'unread-count', { count }, userId);
+const notifySessionTerminated = userId => {
+  const delivered = broadcast('session', 'session-terminated', {}, userId);
+  closeUserStreams(userId);
+  log.auth.info('Session-terminated event pushed', { userId, connections: delivered });
 };
 
 /**
@@ -211,8 +211,8 @@ export {
   TOPICS,
   openEventStream,
   broadcast,
+  closeUserStreams,
   notifySessionTerminated,
-  notifyUnreadCount,
   notifyProfileUpdated,
   notifyProfilesUpdated,
   notifyHealth,

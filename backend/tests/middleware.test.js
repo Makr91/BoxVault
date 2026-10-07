@@ -2414,13 +2414,15 @@ describe('Middleware Tests', () => {
     });
 
     // oidcTokenRefresh.js coverage
+    const uniqueRefreshToken = () => `rt-${Math.random()}`;
+
     const expiringSession = () =>
       jwt.sign(
         {
           id: 1,
           provider: 'oidc-test',
           oidc_expires_at: Date.now() + 60 * 1000,
-          oidc_refresh_token: 'rt',
+          oidc_refresh_token: uniqueRefreshToken(),
         },
         'test-secret',
         JWT_CLAIM_OPTIONS
@@ -2604,7 +2606,7 @@ describe('Middleware Tests', () => {
           id: 1,
           provider: 'oidc-test',
           oidc_expires_at: Date.now() + 60000,
-          oidc_refresh_token: 'rt',
+          oidc_refresh_token: uniqueRefreshToken(),
         },
         'test-secret',
         JWT_CLAIM_OPTIONS
@@ -2631,7 +2633,7 @@ describe('Middleware Tests', () => {
           id: 1,
           provider: 'oidc-test',
           oidc_expires_at: Date.now() + 60000,
-          oidc_refresh_token: 'rt',
+          oidc_refresh_token: uniqueRefreshToken(),
         },
         'test-secret',
         JWT_CLAIM_OPTIONS
@@ -2661,7 +2663,7 @@ describe('Middleware Tests', () => {
           id: 1,
           provider: 'oidc-test',
           oidc_expires_at: Date.now() + 60000,
-          oidc_refresh_token: 'rt',
+          oidc_refresh_token: uniqueRefreshToken(),
         },
         'test-secret',
         JWT_CLAIM_OPTIONS

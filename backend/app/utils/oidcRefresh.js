@@ -7,6 +7,16 @@ import { getOidcConfiguration } from '../auth/passport.js';
 const REGISTERED_CLAIMS = ['exp', 'iat', 'nbf', 'iss', 'aud'];
 
 const inFlight = new Map();
+const completed = new Map();
+
+const purgeCompleted = () => {
+  const now = Date.now();
+  for (const [refreshToken, session] of completed) {
+    if (session.tokens.oidc_expires_at <= now) {
+      completed.delete(refreshToken);
+    }
+  }
+};
 
 /**
  * Whether the token endpoint refused the grant itself: RFC 6749 §5.2
@@ -70,20 +80,31 @@ const mintSession = (claims, newTokens) => {
 /**
  * Refresh the identity-provider tokens of a BoxVault session once per refresh
  * token: concurrent callers holding the same refresh token share one token
- * request and one minted session, so a rotated-out token is never presented
- * twice (RFC 6749 §6, RFC 9700 §4.14.2).
+ * request and one minted session, and a caller presenting a refresh token
+ * already redeemed receives that same session until its new access token
+ * expires, so a rotated-out token is never presented twice (RFC 6749 §6,
+ * RFC 9700 §4.14.2).
  * @param {Object} claims - The verified claims of the session JWT
  * @returns {Promise<{token: string, tokens: Object}>} The new session JWT and the provider fields it carries
  * @throws {Error} The token endpoint's refusal, or the provider not being configured
  */
 const refreshOidcSession = claims => {
   const key = claims.oidc_refresh_token;
+  purgeCompleted();
+  if (completed.has(key)) {
+    return Promise.resolve(completed.get(key));
+  }
   if (inFlight.has(key)) {
     return inFlight.get(key);
   }
   const pending = Promise.resolve()
     .then(() => tokenRequest(providerNameOf(claims), key))
     .then(response => mintSession(claims, response.data))
+    .then(session => {
+      purgeCompleted();
+      completed.set(key, session);
+      return session;
+    })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, pending);
   return pending;
