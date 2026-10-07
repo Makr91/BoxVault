@@ -1,10 +1,12 @@
 import request from 'supertest';
 import fs from 'fs';
+import http from 'http';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
 import app from '../server.js';
 import db from '../app/models/index.js';
 import { getPendingPath, getSecureDownloadPath } from '../app/controllers/download/helpers.js';
+import { isPrivateAddress, openRemote } from '../app/utils/remoteFetch.js';
 
 const TEST_JWT_CLAIMS = { issuer: 'boxvault', audience: 'boxvault-api' };
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
@@ -401,6 +403,185 @@ describe('Download pending upload API', () => {
         .delete(`${pendingBase}/${details.id}`)
         .set('x-access-token', memberToken)
         .expect(204);
+    });
+  });
+
+  describe('fetch from a URL', () => {
+    const fetchName = 'HCL_Fetch_1.0_Linux.tar';
+    const fetchContent = Buffer.from(`fetched-bytes-${uniqueId}`.repeat(64));
+    let server;
+    let origin;
+
+    const fetchFrom = (token, payload) =>
+      request(app).post(`${pendingBase}/fetch`).set('x-access-token', token).send(payload);
+
+    const pendingCount = fileName =>
+      db.downloadPendingUploads.count({ where: { organizationId: org.id, fileName } });
+
+    beforeAll(async () => {
+      server = http.createServer((req, res) => {
+        const { pathname } = new URL(req.url, 'http://127.0.0.1');
+        if (pathname === `/files/${fetchName}`) {
+          res.writeHead(200, {
+            'Content-Type': 'binary/octet-stream',
+            'Content-Length': fetchContent.length,
+          });
+          res.end(fetchContent);
+          return;
+        }
+        if (pathname === '/moved') {
+          res.writeHead(302, { Location: `/files/${fetchName}` });
+          res.end();
+          return;
+        }
+        res.writeHead(404);
+        res.end();
+      });
+      await new Promise(resolve => {
+        server.listen(0, '127.0.0.1', resolve);
+      });
+      origin = `http://127.0.0.1:${server.address().port}`;
+    });
+
+    afterAll(async () => {
+      await new Promise(resolve => {
+        server.close(resolve);
+      });
+    });
+
+    it('should follow the redirect, verify the declared checksum and answer the pending upload', async () => {
+      const res = await fetchFrom(memberToken, {
+        url: `${origin}/moved?X-Signature=abc`,
+        file_name: fetchName,
+        checksum: sha256(fetchContent).toUpperCase(),
+        checksum_type: 'SHA256',
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.details).toMatchObject({
+        is_complete: true,
+        status: 'complete',
+        file_size: fetchContent.length,
+        file_name: fetchName,
+        size: fetchContent.length,
+        guess: { release: '1.0', platform: 'linux' },
+      });
+      const { id } = res.body.details;
+      expect(fs.readFileSync(getPendingPath(orgName, id, fetchName))).toEqual(fetchContent);
+
+      const info = await request(app)
+        .get(`${pendingBase}/${id}/info`)
+        .set('x-access-token', memberToken);
+      expect(info.body.checksum).toBe(sha256(fetchContent));
+      expect(info.body.checksum_type).toBe('SHA256');
+
+      const placed = await request(app)
+        .post(`${pendingBase}/${id}/place`)
+        .set('x-access-token', memberToken)
+        .send({ product: 'hcl-fetch', release: '1.0' });
+      expect(placed.statusCode).toBe(200);
+      expect(
+        fs.readFileSync(getSecureDownloadPath(orgName, 'hcl-fetch', '1.0', 'release', fetchName))
+      ).toEqual(fetchContent);
+    });
+
+    it('should name the file after the last segment of the URL path and compute a sha256', async () => {
+      const res = await fetchFrom(memberToken, { url: `${origin}/files/${fetchName}` });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.details.file_name).toBe(fetchName);
+      const info = await request(app)
+        .get(`${pendingBase}/${res.body.details.id}/info`)
+        .set('x-access-token', memberToken);
+      expect(info.body.checksum).toBe(sha256(fetchContent));
+      await request(app)
+        .delete(`${pendingBase}/${res.body.details.id}`)
+        .set('x-access-token', memberToken)
+        .expect(204);
+    });
+
+    it('should refuse bytes that miss the declared checksum and keep no pending upload', async () => {
+      const res = await fetchFrom(memberToken, {
+        url: `${origin}/files/${fetchName}`,
+        file_name: 'mismatch.tar',
+        checksum: sha256(Buffer.from('other bytes')),
+        checksum_type: 'SHA256',
+      });
+      expect(res.statusCode).toBe(422);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/checksum', rule: 'matchesContent' }),
+      ]);
+      expect(await pendingCount('mismatch.tar')).toBe(0);
+    });
+
+    it('should answer 502 when the remote host answers anything but 200', async () => {
+      const res = await fetchFrom(memberToken, {
+        url: `${origin}/missing.tar`,
+        file_name: 'missing.tar',
+      });
+      expect(res.statusCode).toBe(502);
+      expect(res.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/url', rule: 'reachable' }),
+      ]);
+      expect(await pendingCount('missing.tar')).toBe(0);
+    });
+
+    it('should refuse a missing url, another scheme and an unknown checksum type', async () => {
+      const missing = await fetchFrom(memberToken, {});
+      expect(missing.statusCode).toBe(422);
+      expect(missing.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/url', rule: 'required' }),
+      ]);
+      const ftp = await fetchFrom(memberToken, {
+        url: 'ftp://example.com/file.tar',
+        checksum_type: 'CRC32',
+      });
+      expect(ftp.statusCode).toBe(422);
+      expect(ftp.body.errors).toEqual([
+        expect.objectContaining({ pointer: '/url', rule: 'format' }),
+        expect.objectContaining({ pointer: '/checksum_type', rule: 'enum' }),
+      ]);
+    });
+
+    it('should refuse a guest and a file name that is not allowed', async () => {
+      const asGuest = await fetchFrom(guestToken, { url: `${origin}/files/${fetchName}` });
+      expect(asGuest.statusCode).toBe(403);
+      const traversal = await fetchFrom(memberToken, {
+        url: `${origin}/files/${fetchName}`,
+        file_name: '../../etc/passwd',
+      });
+      expect(traversal.statusCode).toBe(400);
+    });
+
+    it('should judge loopback, private, link-local and mapped addresses private and public ones not', () => {
+      [
+        '127.0.0.1',
+        '10.1.2.3',
+        '172.17.205.54',
+        '192.168.1.1',
+        '169.254.169.254',
+        '100.64.0.1',
+        '0.0.0.0',
+        '::1',
+        'fe80::1',
+        'fd00::1',
+        '::ffff:127.0.0.1',
+        'not-an-address',
+      ].forEach(address => expect(isPrivateAddress(address)).toBe(true));
+      ['8.8.8.8', '13.32.0.1', '2606:4700:4700::1111', '::ffff:8.8.8.8'].forEach(address =>
+        expect(isPrivateAddress(address)).toBe(false)
+      );
+    });
+
+    it('should refuse a private host by address and by name unless private hosts are allowed', async () => {
+      await expect(openRemote(`${origin}/files/${fetchName}`)).rejects.toMatchObject({
+        code: 'EPRIVATEADDRESS',
+      });
+      const { port } = server.address();
+      await expect(openRemote(`http://localhost:${port}/files/${fetchName}`)).rejects.toMatchObject(
+        { code: 'EPRIVATEADDRESS' }
+      );
+      const response = await openRemote(`${origin}/moved`, { allowPrivate: true });
+      expect(response.statusCode).toBe(200);
+      response.resume();
     });
   });
 

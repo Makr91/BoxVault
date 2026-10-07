@@ -597,16 +597,12 @@ const sweepStaleTempDirs = async () => {
 
 const handleSingleUpload = async (
   req,
+  { source, headers },
   target,
-  tempDir,
-  finalPath,
-  contentLength,
-  isChunked,
-  startTime,
-  maxFileSize
+  { tempDir, finalPath, contentLength, isChunked, startTime, maxFileSize }
 ) => {
-  const expectedChecksum = req.headers['x-checksum'];
-  const checksumType = req.headers['x-checksum-type'];
+  const expectedChecksum = headers['x-checksum'];
+  const checksumType = headers['x-checksum-type'];
   const nodeAlgo = expectedChecksum && checksumType ? checksumAlgorithm(checksumType) : null;
   if (nodeAlgo) {
     log.app.info(`Verifying checksum (${nodeAlgo}) inline for file: ${finalPath}`);
@@ -633,27 +629,33 @@ const handleSingleUpload = async (
 
   let finalSize;
   try {
-    await pipeline(req, hasher, writeStream);
+    await pipeline(source, hasher, writeStream);
 
     finalSize = statSync(uploadPath).size;
 
     if (!isChunked && !isNaN(contentLength)) {
       const maxDiff = Math.max(1024 * 1024, contentLength * 0.01);
       if (Math.abs(finalSize - contentLength) > maxDiff) {
-        throw new Error(
-          `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
+        throw Object.assign(
+          new Error(
+            `File size mismatch: Expected ${contentLength} bytes but got ${finalSize} bytes`
+          ),
+          { code: 'ESIZE' }
         );
       }
     }
 
     if (finalSize > maxFileSize) {
-      throw new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`);
+      throw Object.assign(
+        new Error(`File size cannot exceed ${maxFileSize / (1024 * 1024 * 1024)}GB`),
+        { code: 'ETOOLARGE' }
+      );
     }
 
     if (hash) {
       const calculated = hash.digest('hex');
       if (calculated !== expectedChecksum.toLowerCase()) {
-        throw new Error('Checksum verification failed');
+        throw Object.assign(new Error('Checksum verification failed'), { code: 'ECHECKSUM' });
       }
     }
 
@@ -665,7 +667,7 @@ const handleSingleUpload = async (
 
   safeRmdirSync(tempDir);
 
-  const extra = await target.complete(finalSize, req.headers, finalPath);
+  const extra = await target.complete(finalSize, headers, finalPath);
 
   const duration = Date.now() - startTime;
   const speed = Math.round(((finalSize / duration) * 1000) / (1024 * 1024));
@@ -784,16 +786,14 @@ const runUpload = async (req, res, target) => {
         maxFileSize
       );
     } else {
-      result = await handleSingleUpload(
-        req,
-        target,
+      result = await handleSingleUpload(req, { source: req, headers: req.headers }, target, {
         tempDir,
         finalPath,
         contentLength,
         isChunked,
         startTime,
-        maxFileSize
-      );
+        maxFileSize,
+      });
     }
 
     return res.status(200).json(result.response);
@@ -831,4 +831,63 @@ const uploadDownloadFile = (req, res) => runUpload(req, res, levelTarget(req.ent
  */
 const uploadPendingFile = (req, res) => runUpload(req, res, pendingTarget(req.pending));
 
-export { uploadDownloadFile, uploadPendingFile, recordFile, addressOf };
+/**
+ * Stream a remote response into the organization's pending store as one
+ * whole-file upload: the declared checksum verified over the bytes as they
+ * arrive, the size held to the configured maximum, the pending row's size and
+ * checksum recorded. Throws with code ETOOLARGE past the maximum (`maxFileSize`
+ * carried), ESIZE when the bytes miss the announced length and ECHECKSUM on a
+ * mismatch, the partial bytes removed.
+ * @param {import('express').Request} req - The request (i18n)
+ * @param {{organization: Object, pending: Object}} context - The organization and the pending upload row
+ * @param {import('http').IncomingMessage} response - The remote response stream
+ * @param {{checksum?: string, checksumType?: string}} declared - The checksum the caller declared
+ * @returns {Promise<{message: string, details: Object}>} The completed upload answer
+ */
+const fetchPendingFile = async (req, context, response, declared) => {
+  const target = pendingTarget(context);
+  const maxFileSize = getMaxFileSize();
+  const contentLength = parseInt(response.headers['content-length']);
+  if (contentLength > maxFileSize) {
+    response.destroy();
+    throw Object.assign(new Error(`File size cannot exceed ${maxFileSize} bytes`), {
+      code: 'ETOOLARGE',
+      maxFileSize,
+    });
+  }
+  const headers = {};
+  if (declared.checksum) {
+    headers['x-checksum'] = declared.checksum;
+  }
+  if (declared.checksumType) {
+    headers['x-checksum-type'] = declared.checksumType;
+  }
+  ensureDirSync(target.dir);
+  const tempDir = join(target.dir, '.temp', target.fileName);
+  ensureDirSync(tempDir);
+  try {
+    const result = await handleSingleUpload(req, { source: response, headers }, target, {
+      tempDir,
+      finalPath: target.path,
+      contentLength,
+      isChunked: isNaN(contentLength),
+      startTime: Date.now(),
+      maxFileSize,
+    });
+    return result.response;
+  } catch (error) {
+    if (error.code === 'ETOOLARGE') {
+      error.maxFileSize = maxFileSize;
+    }
+    throw error;
+  }
+};
+
+export {
+  uploadDownloadFile,
+  uploadPendingFile,
+  fetchPendingFile,
+  headerErrors,
+  recordFile,
+  addressOf,
+};

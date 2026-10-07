@@ -80,7 +80,9 @@
     "writable": "{{field}} no es escribible por el usuario del servicio.",
     "reachable": "{{field}} no respondió.",
     "readOnly": "{{field}} lo gestiona el proveedor de identidad.",
-    "withinParent": "Mantén {{field}} dentro de {{parent}}, el ajuste del nivel superior."
+    "withinParent": "Mantén {{field}} dentro de {{parent}}, el ajuste del nivel superior.",
+    "publicAddress": "{{field}} debe indicar una dirección pública.",
+    "matchesContent": "{{field}} no coincide con los bytes recibidos."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organización no encontrada con el nombre: {{organization}}.",

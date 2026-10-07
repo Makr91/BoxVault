@@ -144,6 +144,12 @@ properties:
         title: Maximum artwork size (MB)
         description: The maximum size of an uploaded box artwork image, in MB
         order: 15
+      fetch_private_addresses:
+        type: boolean
+        default: false
+        title: Fetch from private addresses
+        description: Let a download fetched from a URL reach a loopback, private, link-local or reserved address; off refuses them so a member cannot reach hosts on BoxVault's own network
+        order: 16
   gravatar:
     type: object
     section: application

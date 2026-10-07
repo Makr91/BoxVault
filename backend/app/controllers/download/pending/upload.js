@@ -276,4 +276,4 @@ const upload = (req, res) => {
   });
 };
 
-export { upload };
+export { upload, pendingFor };

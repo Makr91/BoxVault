@@ -474,6 +474,24 @@ curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pendi
 
 A blank release answers `422` with the pointer `/version_number`. `DELETE …/download/pending/{id}` discards a pending upload; the member who uploaded it, or an admin or owner of the organization, may place or discard it, and the server drops a pending upload nobody placed after a day.
 
+### Fetch File from a URL
+
+The pending store also takes a URL, the server fetching the bytes itself so they cross the network once. Redirects are followed, the file name is the last segment of the URL path unless `file_name` names it, and a declared checksum is verified as the bytes arrive. The request stays open until the bytes are stored and answers what the pending upload answers; place it the same way:
+
+```bash
+curl -X POST "https://boxvault.example.com/api/organization/myorg/download/pending/fetch" \
+  -H "x-access-token: YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://downloads.example.com/Domino_1451FP1_Linux.tar?signature=abc",
+    "file_name": "Domino_1451FP1_Linux.tar",
+    "checksum": "b0a63346...",
+    "checksum_type": "SHA256"
+  }'
+```
+
+A checksum the bytes do not match answers `422` with the pointer `/checksum`; a remote host that fails or answers anything but `200` answers `502` with the pointer `/url`; a file above `boxvault.box_max_file_size` answers `413`. A host on a loopback, private, link-local or reserved address answers `422` with the pointer `/url` unless `boxvault.fetch_private_addresses` is on. A failed fetch leaves no pending upload.
+
 ### Set the Patch Kind
 
 ```bash
@@ -739,6 +757,7 @@ A taken value answers `409` with type `conflict` and one `unique` entry whose `p
 - `422 Unprocessable Content` - A value breaks a rule
 - `429 Too Many Requests` - Rate limited, retry after `Retry-After`
 - `500 Internal Server Error` - Server error
+- `502 Bad Gateway` - A URL the server fetched failed or answered anything but `200`
 
 ---
 

@@ -37,6 +37,7 @@ const appConfig = {
     api_url: 'http://localhost:3000/api',
     api_listen_port_unencrypted: Number(process.env.TEST_PORT) || 5001,
     api_listen_port_encrypted: 5002,
+    fetch_private_addresses: true,
   },
   ticket_system: {
     enabled: true,

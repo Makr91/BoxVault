@@ -80,7 +80,9 @@
     "writable": "{{field}} is not writable by the service user.",
     "reachable": "{{field}} did not answer.",
     "readOnly": "{{field}} is managed by the identity provider.",
-    "withinParent": "Keep {{field}} within {{parent}}, the setting one level up."
+    "withinParent": "Keep {{field}} within {{parent}}, the setting one level up.",
+    "publicAddress": "{{field}} must name a public address.",
+    "matchesContent": "{{field}} does not match the bytes received."
   },
   "organizations": {
     "organizationNotFoundWithName": "Organization not found with name: {{organization}}.",

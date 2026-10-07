@@ -48,6 +48,7 @@ import { download as downloadFile } from '../controllers/download/file/download.
 import { getDownloadLink } from '../controllers/download/file/link.js';
 import { remove as removeFile } from '../controllers/download/file/remove.js';
 import { upload as uploadPending } from '../controllers/download/pending/upload.js';
+import { fetchRemote as fetchPending } from '../controllers/download/pending/fetch.js';
 import { info as pendingInfo } from '../controllers/download/pending/info.js';
 import { place as placePending } from '../controllers/download/pending/place.js';
 import { remove as removePending } from '../controllers/download/pending/remove.js';
@@ -127,6 +128,14 @@ router.post(
   authJwt.verifyToken,
   authJwt.isUserOrServiceAccount,
   uploadPending
+);
+
+router.post(
+  '/organization/:organization/download/pending/fetch',
+  fileOperationLimiter,
+  authJwt.verifyToken,
+  authJwt.isUserOrServiceAccount,
+  fetchPending
 );
 
 router.get(
