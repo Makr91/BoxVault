@@ -1,1 +1,4 @@
-{}
+{
+  "GHSA-vfj7-8cjw-p6xm": { "active": true, "expiry": "2027-04-07" },
+  "GHSA-hp3w-g68c-fv3c": { "active": true, "expiry": "2027-04-07" }
+}
