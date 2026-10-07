@@ -14,9 +14,41 @@ const FORWARDED_EVENTS = new Set([
 
 const RETRY_MS = 3000;
 const RETRY_CAP_MS = 30000;
+const RING_MAX_AGE_MS = 5 * 60 * 1000;
 const STREAM_TYPE = 'text/event-stream';
 
 const relays = new Map();
+
+const spend = (relay, context) => {
+  relay.spent.set(context.token, context.expiresAt);
+};
+
+const pruneSpent = relay => {
+  const now = Date.now();
+  for (const [token, expiresAt] of relay.spent) {
+    if (expiresAt <= now) {
+      relay.spent.delete(token);
+    }
+  }
+};
+
+const resumable = relay => {
+  const issuedAt = Number(String(relay.lastEventId || '').split('-')[0]);
+  return Number.isFinite(issuedAt) && issuedAt > 0 && Date.now() - issuedAt < RING_MAX_AGE_MS;
+};
+
+const sweepIdle = keptUserId => {
+  for (const relay of relays.values()) {
+    if (
+      relay.userId !== keptUserId &&
+      relay.ending &&
+      relay.connections.size === 0 &&
+      !resumable(relay)
+    ) {
+      relays.delete(relay.userId);
+    }
+  }
+};
 
 const contextOf = req => {
   const provider = req.authProvider || req.tokenClaims?.provider;
@@ -220,6 +252,7 @@ const endStreams = relay => {
 };
 
 const run = (relay, after = Date.now()) => {
+  pruneSpent(relay);
   const context = freshest(relay, after);
   if (!context) {
     return false;
@@ -233,15 +266,15 @@ const run = (relay, after = Date.now()) => {
     relay.upstream = null;
     upstream.controller.abort();
     if (outcome === 'completed') {
-      relay.spent.add(context.token);
+      spend(relay, context);
       if (!run(relay, context.expiresAt)) {
         endStreams(relay);
       }
     } else if (outcome === 'refused') {
-      relay.spent.add(context.token);
+      spend(relay, context);
       run(relay);
     } else if (outcome === 'terminated') {
-      relay.spent.add(context.token);
+      spend(relay, context);
       log.app.info('Notification relay ended by the identity provider', { userId: relay.userId });
     } else if (outcome === 'dropped') {
       const delay = Math.min(relay.retryMs * 2 ** relay.attempt, RETRY_CAP_MS);
@@ -275,7 +308,10 @@ const close = relay => {
  * streams while this connection is open: one upstream connection per person,
  * opened with the access token of theirs that expires latest, forwarding the
  * seven inbox events through broadcast and resuming with the issuer's last
- * frame id. A local-account session gets no relay.
+ * frame id. A spent token is forgotten once it expires, and a relay whose
+ * tabs never came back is forgotten at the next connection of anyone else
+ * once its last issuer id is older than the issuer's ring. A local-account session
+ * gets no relay.
  * @param {import('express').Request} req - The stream request, with the session resolved
  * @param {import('express').Response} res - The open stream response
  * @returns {void}
@@ -291,10 +327,11 @@ const relayNotifications = (req, res) => {
   if (!context) {
     return;
   }
+  sweepIdle(req.userId);
   const relay = relays.get(req.userId) || {
     userId: req.userId,
     connections: new Map(),
-    spent: new Set(),
+    spent: new Map(),
     upstream: null,
     timer: null,
     attempt: 0,

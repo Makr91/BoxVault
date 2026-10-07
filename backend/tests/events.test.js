@@ -176,7 +176,12 @@ describe('Events API', () => {
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.startsWith(STREAM_TYPE)) {
       const body = await response.json();
-      return { status: response.status, body, close: () => controller.abort() };
+      return {
+        status: response.status,
+        headers: response.headers,
+        body,
+        close: () => controller.abort(),
+      };
     }
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -260,6 +265,7 @@ describe('Events API', () => {
     it('should answer 401 without a session', async () => {
       const stream = await openStream();
       expect(stream.status).toBe(401);
+      expect(stream.headers.get('www-authenticate')).toBe('Bearer');
       expect(stream.body.type).toBe('https://auth.startcloud.com/probs/authentication');
       expect(stream.body.title).toBe('Unauthorized!');
     });
@@ -272,6 +278,7 @@ describe('Events API', () => {
     it('should answer 403 to a service account', async () => {
       const stream = await openStream({ headers: { 'x-access-token': serviceToken } });
       expect(stream.status).toBe(403);
+      expect(stream.headers.get('www-authenticate')).toBeNull();
     });
 
     it('should open with the stream headers, the retry hint and the ready frame', async () => {
@@ -569,6 +576,35 @@ describe('Events API', () => {
       expect(reopened.headers['last-event-id']).toBe('up-7');
 
       resumed.close();
+      await reopened.closed;
+    });
+
+    it('should forget a relay whose streams never came back once someone else connects', async () => {
+      const person = await createPerson('relayabandoned');
+      const passerby = await createPerson('relaypasserby');
+      const stream = await openRelayed(sessionFor(person));
+      const upstream = await issuer.requestAt(0);
+
+      upstream.res.write(upstreamFrame('unread-count', { count: 1 }, 'up-5'));
+      await stream.readUntil(2);
+      upstream.res.end();
+      await stream.readUntil(Number.MAX_SAFE_INTEGER);
+      expect(stream.ended()).toBe(true);
+
+      const elsewhere = await openRelayed(sessionFor(passerby));
+      const passing = await issuer.requestAt(1);
+      expect(passing.headers.authorization).toBe(`Bearer idp-${passerby.id}`);
+
+      const back = await openRelayed(
+        sessionFor(person, { oidc_access_token: `idp-${person.id}-back` })
+      );
+      const reopened = await issuer.requestAt(2);
+      expect(reopened.headers.authorization).toBe(`Bearer idp-${person.id}-back`);
+      expect(reopened.headers['last-event-id']).toBeUndefined();
+
+      elsewhere.close();
+      back.close();
+      await passing.closed;
       await reopened.closed;
     });
 

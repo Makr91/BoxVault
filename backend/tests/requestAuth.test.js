@@ -128,6 +128,7 @@ const requestWith = (headers = {}, extra = {}) => ({
 });
 
 const mockResponse = () => ({
+  set: jest.fn().mockReturnThis(),
   status: jest.fn().mockReturnThis(),
   type: jest.fn().mockReturnThis(),
   send: jest.fn(),
@@ -378,6 +379,7 @@ describe('Request authentication', () => {
       const next = jest.fn();
       await authJwt.verifyToken(requestWith({ authorization: `Bearer ${token}` }), res, next);
       expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.set).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer');
       expect(res.type).toHaveBeenCalledWith('application/problem+json');
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -209,6 +209,7 @@ describe('SCIM receiver', () => {
     it('should refuse a request without a bearer token', async () => {
       const res = await request(app).get('/scim/v2/Users');
       expect(res.statusCode).toBe(401);
+      expect(res.headers['www-authenticate']).toBe('Bearer');
       expect(res.body.detail).toBe('Missing bearer token');
     });
 

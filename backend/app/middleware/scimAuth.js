@@ -19,7 +19,8 @@ import { getOidcConfiguration } from '../auth/passport.js';
 /**
  * Send a SCIM-shaped error response (RFC 7644 §3.12): the Error message
  * schema, "status" as a string, an optional scimType keyword (MUST be
- * "uniqueness" on duplicate-resource 409s per §3.3), and the SCIM media type.
+ * "uniqueness" on duplicate-resource 409s per §3.3), and the SCIM media type;
+ * a 401 carries `WWW-Authenticate: Bearer` (RFC 9110 §11.6.1).
  * @param {Object} res - Express response
  * @param {number} status - HTTP status code
  * @param {string} detail - Human-readable error detail
@@ -37,6 +38,10 @@ const scimError = (res, status, detail, scimType = null) => {
       scimType,
       detail,
     });
+  }
+
+  if (status === 401) {
+    res.set('WWW-Authenticate', 'Bearer');
   }
 
   return res

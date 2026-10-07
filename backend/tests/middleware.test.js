@@ -1469,6 +1469,7 @@ describe('Middleware Tests', () => {
         __: key => key,
       };
       res = {
+        set: jest.fn().mockReturnThis(),
         status: jest.fn().mockReturnThis(),
         type: jest.fn().mockReturnThis(),
         send: jest.fn(),
@@ -1763,6 +1764,7 @@ describe('Middleware Tests', () => {
     beforeEach(() => {
       req = { headers: { 'x-access-token': 'invalid-token' }, path: '/api/test', __: key => key };
       res = {
+        set: jest.fn().mockReturnThis(),
         status: jest.fn().mockReturnThis(),
         type: jest.fn().mockReturnThis(),
         send: jest.fn(),
@@ -1801,6 +1803,7 @@ describe('Middleware Tests', () => {
         __: key => key,
       };
       res = {
+        set: jest.fn().mockReturnThis(),
         status: jest.fn().mockReturnThis(),
         type: jest.fn().mockReturnThis(),
         send: jest.fn(),
@@ -2249,6 +2252,7 @@ describe('Middleware Tests', () => {
         __: key => key,
       });
       res = {
+        set: jest.fn().mockReturnThis(),
         status: jest.fn().mockReturnThis(),
         type: jest.fn().mockReturnThis(),
         send: jest.fn(),
