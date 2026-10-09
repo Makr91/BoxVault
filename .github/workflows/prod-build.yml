@@ -183,6 +183,33 @@ jobs:
         run: |
           gh release upload ${{ github.event.inputs.tag_name || env.TAG_NAME }} "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" --clobber
 
+      - name: Generate and upload SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha256sum "${PACKAGE_NAME}_${VERSION}_${ARCH}.deb" > SHA256SUMS.txt
+          gh release upload "${{ github.event.inputs.tag_name || env.TAG_NAME }}" SHA256SUMS.txt --clobber
+
+      - name: Generate and upload update-info.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.inputs.tag_name || env.TAG_NAME }}"
+          DL="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          NOTES="$(gh release view "${TAG}" --json body --jq .body | jq -Rs .)"
+          cat > update-info.json << EOF
+          {
+            "version": "${VERSION}",
+            "releaseUrl": "https://github.com/${{ github.repository }}/releases/tag/${TAG}",
+            "releaseDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "changelog": "https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md",
+            "releaseNotes": ${NOTES},
+            "linuxUrl": "${DL}/${PACKAGE_NAME}_${VERSION}_${ARCH}.deb",
+            "checksumsUrl": "${DL}/SHA256SUMS.txt"
+          }
+          EOF
+          gh release upload "${TAG}" update-info.json --clobber
+
       #      - name: Upload OmniOS package to release
       #        env:
       #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

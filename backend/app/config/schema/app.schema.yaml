@@ -219,6 +219,18 @@ properties:
         title: Hyperweaver URL
         description: The base URL of the Hyperweaver UI the Deploy button links to; empty hides the button
         order: 1
+  updates:
+    type: object
+    section: application
+    subsection: updates
+    title: Updates
+    properties:
+      versioninfo_url:
+        type: string
+        default: https://github.com/Makr91/BoxVault/releases/latest/download/update-info.json
+        title: Version document URL
+        description: JSON document with version, releaseUrl, releaseDate, changelog, releaseNotes, linuxUrl and checksumsUrl, published with every release; the update check reads the release's date, notes and files from it; empty reads none
+        order: 1
   ssl:
     type: object
     section: application
@@ -731,6 +743,7 @@ properties:
               - sidebar
               - search
               - events
+              - rules
           title: Features
           description: The feature tokens this hostname answers, in order; absent answers every token BoxVault supports
           order: 9

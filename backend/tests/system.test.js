@@ -26,6 +26,8 @@ const mockStatfs = jest.fn().mockResolvedValue({
 const mockExistsSync = jest.fn(path => originalFs.existsSync(path));
 const mockHttpsGet = jest.fn((url, cb) => originalHttps.get(url, cb));
 const mockHttpGet = jest.fn((url, cb) => originalHttp.get(url, cb));
+const mockAxiosGet = jest.fn(() => Promise.reject(new Error('no release document')));
+const mockAxiosHead = jest.fn(() => Promise.reject(new Error('no asset')));
 
 // Mock config loader to allow injecting test configurations
 const mockConfigLoader = {
@@ -99,6 +101,10 @@ jest.unstable_mockModule('../app/utils/config-loader.js', () => ({
   default: mockConfigLoader,
 }));
 
+jest.unstable_mockModule('axios', () => ({
+  default: { get: mockAxiosGet, head: mockAxiosHead, post: jest.fn(), delete: jest.fn() },
+}));
+
 const request = (await import('supertest')).default;
 const app = (await import('../server.js')).default;
 const db = (await import('../app/models/index.js')).default;
@@ -157,6 +163,8 @@ describe('System API', () => {
   afterEach(() => {
     jest.clearAllMocks();
     mockConfigLoader.loadConfig.mockClear();
+    mockAxiosGet.mockImplementation(() => Promise.reject(new Error('no release document')));
+    mockAxiosHead.mockImplementation(() => Promise.reject(new Error('no asset')));
   });
 
   describe('GET /api/system/storage', () => {
@@ -227,12 +235,130 @@ describe('System API', () => {
       expect(res.body).toHaveProperty('release_url');
       expect(res.body.release_date).toBeNull();
       expect(res.body.changelog).toBe('https://github.com/Makr91/BoxVault/releases');
+      expect(res.body.release_notes).toBeNull();
+      expect(res.body.assets).toBeNull();
     });
 
     it('should fail for non-admin user', async () => {
       const res = await request(app).get('/api/app/updates/check').set('x-access-token', userToken);
 
       expect(res.statusCode).toBe(403);
+    });
+
+    describe('with the release document', () => {
+      const DOCUMENT_URL =
+        'https://github.com/Makr91/BoxVault/releases/latest/download/update-info.json';
+      const DOWNLOADS = 'https://github.com/Makr91/BoxVault/releases/download/v1.2.0';
+      const DEB_SUM = 'e9c7a4f2b8d6e3c1a0f9b7d5e2c4a6f8b1d3e5c7a3f0c9a1b7e4d2c8f5a6b1d0';
+      const document = {
+        version: '1.2.0',
+        releaseUrl: 'https://github.com/Makr91/BoxVault/releases/tag/v1.2.0',
+        releaseDate: '2026-10-04T00:00:00Z',
+        changelog: 'https://github.com/Makr91/BoxVault/blob/main/CHANGELOG.md',
+        releaseNotes: '### Features\n\n* a feature',
+        linuxUrl: `${DOWNLOADS}/boxvault_1.2.0_amd64.deb`,
+        checksumsUrl: `${DOWNLOADS}/SHA256SUMS.txt`,
+      };
+
+      beforeEach(() => {
+        mockConfigLoader.loadConfig.mockImplementation(name => {
+          if (name === 'app') {
+            return { boxvault: {}, updates: { versioninfo_url: DOCUMENT_URL } };
+          }
+          return actualConfigLoader.loadConfig(name);
+        });
+        mockExec.mockImplementation((cmd, cb) => {
+          void cmd;
+          cb(null, '1.0.0', '');
+        });
+      });
+
+      it('should answer the release date, notes and assets from the document', async () => {
+        mockAxiosGet.mockImplementation(url => {
+          if (url === DOCUMENT_URL) {
+            return Promise.resolve({ data: document });
+          }
+          if (url === document.checksumsUrl) {
+            return Promise.resolve({ data: `${DEB_SUM}  boxvault_1.2.0_amd64.deb\n` });
+          }
+          return Promise.reject(new Error(`unexpected ${url}`));
+        });
+        mockAxiosHead.mockImplementation(url =>
+          url === document.linuxUrl
+            ? Promise.resolve({ headers: { 'content-length': '38692454' } })
+            : Promise.reject(new Error('not found'))
+        );
+
+        const res = await request(app)
+          .get('/api/app/updates/check')
+          .set('x-access-token', adminToken);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.release_url).toBe(document.releaseUrl);
+        expect(res.body.release_date).toBe(document.releaseDate);
+        expect(res.body.changelog).toBe(document.changelog);
+        expect(res.body.release_notes).toBe(document.releaseNotes);
+        expect(res.body.assets).toEqual([
+          {
+            name: 'boxvault_1.2.0_amd64.deb',
+            url: document.linuxUrl,
+            size: 38692454,
+            checksum: DEB_SUM,
+          },
+          { name: 'SHA256SUMS.txt', url: document.checksumsUrl, size: null, checksum: null },
+        ]);
+        expect(mockAxiosGet).toHaveBeenCalledWith(DOCUMENT_URL, { responseType: 'json' });
+      });
+
+      it('should answer null assets for a document that carries no URL', async () => {
+        mockAxiosGet.mockImplementation(url =>
+          url === DOCUMENT_URL
+            ? Promise.resolve({ data: { version: '1.2.0', releaseNotes: 'notes' } })
+            : Promise.reject(new Error(`unexpected ${url}`))
+        );
+
+        const res = await request(app)
+          .get('/api/app/updates/check')
+          .set('x-access-token', adminToken);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.release_notes).toBe('notes');
+        expect(res.body.assets).toBeNull();
+        expect(res.body.release_url).toBe('https://github.com/Makr91/BoxVault/releases/tag/v1.0.0');
+        expect(mockAxiosHead).not.toHaveBeenCalled();
+      });
+
+      it('should fall back to the apt members when the document cannot be read', async () => {
+        mockAxiosGet.mockRejectedValue(new Error('Network Error'));
+
+        const res = await request(app)
+          .get('/api/app/updates/check')
+          .set('x-access-token', adminToken);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.release_url).toBe('https://github.com/Makr91/BoxVault/releases/tag/v1.0.0');
+        expect(res.body.release_date).toBeNull();
+        expect(res.body.changelog).toBe('https://github.com/Makr91/BoxVault/releases');
+        expect(res.body.release_notes).toBeNull();
+        expect(res.body.assets).toBeNull();
+      });
+
+      it('should read no document while no URL is configured', async () => {
+        mockConfigLoader.loadConfig.mockImplementation(name => {
+          if (name === 'app') {
+            return { boxvault: {}, updates: { versioninfo_url: '' } };
+          }
+          return actualConfigLoader.loadConfig(name);
+        });
+
+        const res = await request(app)
+          .get('/api/app/updates/check')
+          .set('x-access-token', adminToken);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.assets).toBeNull();
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      });
     });
 
     it('should handle exec errors (not apt managed)', async () => {

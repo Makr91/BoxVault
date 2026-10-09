@@ -46,3 +46,5 @@ notifications:
   vapid_private_key: ''
 hyperweaver:
   url: ''
+updates:
+  versioninfo_url: https://github.com/Makr91/BoxVault/releases/latest/download/update-info.json

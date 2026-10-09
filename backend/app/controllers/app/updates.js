@@ -2,8 +2,9 @@ import { exec } from 'child_process';
 import { promises, readFileSync } from 'fs';
 import https from 'https';
 import http from 'http';
-import { join, dirname } from 'path';
+import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 import { coerce, gt } from 'semver';
 import { log } from '../../utils/Logger.js';
 import { loadConfig } from '../../utils/config-loader.js';
@@ -121,6 +122,90 @@ const releaseUrlOf = latest => {
   return `${RELEASES_URL}/tag/v${tag}`;
 };
 
+const ASSET_URL_KEYS = ['windowsUrl', 'macosUrl', 'linuxUrl', 'checksumsUrl'];
+
+const textOf = value => (typeof value === 'string' && value !== '' ? value : null);
+
+/**
+ * The release document at updates.versioninfo_url, the family's
+ * update-info.json: version, releaseUrl, releaseDate, changelog,
+ * releaseNotes, the platform URLs and checksumsUrl; null while no URL is
+ * configured, the document cannot be fetched, or it carries no version
+ * @returns {Promise<Object|null>} The document, or null
+ */
+const readVersionInfo = async () => {
+  const url = loadConfig('app').updates?.versioninfo_url;
+  if (!url) {
+    return null;
+  }
+  try {
+    const { data } = await axios.get(url, { responseType: 'json' });
+    return data && typeof data === 'object' && textOf(data.version) ? data : null;
+  } catch (error) {
+    log.app.warn('Release document could not be read', { url, error: error.message });
+    return null;
+  }
+};
+
+const checksumsOf = async checksumsUrl => {
+  if (!checksumsUrl) {
+    return {};
+  }
+  try {
+    const { data } = await axios.get(checksumsUrl, { responseType: 'text' });
+    return Object.fromEntries(
+      String(data)
+        .split('\n')
+        .map(line => line.trim().split(/\s+/))
+        .filter(fields => fields.length === 2)
+        .map(([sum, name]) => [name.replace(/^\*/, ''), sum])
+    );
+  } catch (error) {
+    log.app.warn('Release checksums could not be read', {
+      url: checksumsUrl,
+      error: error.message,
+    });
+    return {};
+  }
+};
+
+const sizeOf = async assetUrl => {
+  try {
+    const { headers } = await axios.head(assetUrl);
+    const size = Number(headers['content-length']);
+    return Number.isInteger(size) && size >= 0 ? size : null;
+  } catch (error) {
+    log.app.warn('Release asset size could not be read', {
+      url: assetUrl,
+      error: error.message,
+    });
+    return null;
+  }
+};
+
+/**
+ * The release's files from the document's platform URLs and checksumsUrl,
+ * one `{ name, url, size, checksum }` per URL the document carries, size
+ * from the file's own Content-Length and checksum from the release's
+ * SHA256SUMS.txt, each null where unknown; null while the document carries
+ * no URL
+ * @param {Object} info - The release document
+ * @returns {Promise<Array<{name: string, url: string, size: number|null, checksum: string|null}>|null>} The assets, or null
+ */
+const assetsOf = async info => {
+  const urls = ASSET_URL_KEYS.map(key => textOf(info[key])).filter(Boolean);
+  if (urls.length === 0) {
+    return null;
+  }
+  const sums = await checksumsOf(textOf(info.checksumsUrl));
+  return Promise.all(
+    urls.map(async url => {
+      const name = basename(new URL(url).pathname);
+      return { name, url, size: await sizeOf(url), checksum: sums[name] ?? null };
+    })
+  );
+};
+
 /**
  * The installed and the published version of the BoxVault package: the
  * installed one from dpkg-query, boxvault first and boxvault-dev second, the
@@ -161,7 +246,7 @@ const resolveUpdate = async () => {
  * /api/app/updates/check:
  *   get:
  *     summary: Check for application updates
- *     description: Reads the installed package version with dpkg-query, boxvault first and boxvault-dev second, and the published version of that same package from boxvault.repository_packages_url, falling back to apt-cache, and says whether a newer one is published, comparing the two as semantic versions with any Debian revision dropped. Always 200; a host where neither package is installed is not managed by apt and answers this build's own version, latest_version null and update_available false. Global admins only; a service account is refused unless it is a live superadmin account.
+ *     description: Reads the installed package version with dpkg-query, boxvault first and boxvault-dev second, and the published version of that same package from boxvault.repository_packages_url, falling back to apt-cache, and says whether a newer one is published, comparing the two as semantic versions with any Debian revision dropped. Reads the release document at updates.versioninfo_url, the update-info.json every release publishes, for release_url, release_date, changelog and release_notes, the release's own markdown, and assets, the release's files as one { name, url, size, checksum } per URL the document carries, size from the file's own Content-Length and checksum from the release's SHA256SUMS.txt, each null where unknown; while the document cannot be read, release_url is the GitHub release of latest_version, changelog the releases page, and release_date, release_notes and assets null. Always 200; a host where neither package is installed is not managed by apt and answers this build's own version, latest_version null and update_available false. Global admins only; a service account is refused unless it is a live superadmin account.
  *     tags: [System]
  *     security:
  *       - JwtAuth: []
@@ -172,7 +257,7 @@ const resolveUpdate = async () => {
  *           application/json:
  *             schema:
  *               type: object
- *               required: [current_version, latest_version, update_available, release_url, release_date, changelog, is_apt_managed]
+ *               required: [current_version, latest_version, update_available, release_url, release_date, changelog, release_notes, assets, is_apt_managed]
  *               properties:
  *                 current_version:
  *                   type: string
@@ -188,16 +273,46 @@ const resolveUpdate = async () => {
  *                 release_url:
  *                   type: string
  *                   nullable: true
- *                   description: The GitHub release of latest_version without its Debian revision, null while no latest version is known
+ *                   description: The release document's releaseUrl, else the GitHub release of latest_version without its Debian revision, null while no latest version is known
  *                   example: https://github.com/Makr91/BoxVault/releases/tag/v0.107.0
  *                 release_date:
  *                   type: string
  *                   nullable: true
- *                   description: Always null; the Packages file carries no date
- *                   example: null
+ *                   description: The release document's releaseDate, null while the document cannot be read
+ *                   example: "2026-10-04T00:00:00Z"
  *                 changelog:
  *                   type: string
- *                   example: https://github.com/Makr91/BoxVault/releases
+ *                   description: The release document's changelog, else the releases page
+ *                   example: https://github.com/Makr91/BoxVault/blob/main/CHANGELOG.md
+ *                 release_notes:
+ *                   type: string
+ *                   nullable: true
+ *                   description: The release's own markdown from the release document, null while the document cannot be read
+ *                   example: "### Features\n\n* ..."
+ *                 assets:
+ *                   type: array
+ *                   nullable: true
+ *                   description: The release's files from the release document, null while the document cannot be read or carries no URL
+ *                   items:
+ *                     type: object
+ *                     required: [name, url, size, checksum]
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         example: boxvault_0.107.0_amd64.deb
+ *                       url:
+ *                         type: string
+ *                         example: https://github.com/Makr91/BoxVault/releases/download/v0.107.0/boxvault_0.107.0_amd64.deb
+ *                       size:
+ *                         type: integer
+ *                         nullable: true
+ *                         description: Bytes, null while the file's Content-Length cannot be read
+ *                         example: 38692454
+ *                       checksum:
+ *                         type: string
+ *                         nullable: true
+ *                         description: The SHA-256 from the release's SHA256SUMS.txt, null while it carries none
+ *                         example: e9c7a4f2b8d6e3c1a0f9b7d5e2c4a6f8b1d3e5c7a3f0c9a1b7e4d2c8f5a6b1d0
  *                 is_apt_managed:
  *                   type: boolean
  *                   example: true
@@ -210,14 +325,16 @@ const resolveUpdate = async () => {
  */
 export const checkUpdate = async (req, res) => {
   void req;
-  const state = await resolveUpdate();
+  const [state, info] = await Promise.all([resolveUpdate(), readVersionInfo()]);
   return res.status(200).json({
     current_version: state.current_version,
     latest_version: state.latest_version,
     update_available: state.update_available,
-    release_url: releaseUrlOf(state.latest_version),
-    release_date: null,
-    changelog: RELEASES_URL,
+    release_url: textOf(info?.releaseUrl) || releaseUrlOf(state.latest_version),
+    release_date: textOf(info?.releaseDate),
+    changelog: textOf(info?.changelog) || RELEASES_URL,
+    release_notes: textOf(info?.releaseNotes),
+    assets: info ? await assetsOf(info) : null,
     is_apt_managed: state.is_apt_managed,
   });
 };

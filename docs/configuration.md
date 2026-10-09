@@ -131,6 +131,7 @@ ssl:
 | `gravatar`             | `base_url` and `api_key` of the server-side Gravatar profile proxy                                                                       |
 | `ticket_system`        | `enabled`, `base_url`, `req_type`, `fallback_customer_id` and `context` of the Help ticket link, served at `GET /api/config/ticket`      |
 | `hyperweaver`          | `url` of the Hyperweaver UI the Deploy button links to; empty hides the button                                                           |
+| `updates`              | `versioninfo_url` of the release document the Update page's check reads the release's date, notes and files from; empty reads none     |
 | `monitoring`           | disk thresholds, alert frequency, service-account and SSL expiry warnings                                                                |
 | `rate_limiting`        | see the [Authentication Guide](guides/authentication/#rate-limiting)                                                                     |
 | `internationalization` | `default_language`, `supported_languages`, `fallback_language`, `auto_detect`, `force_language`                                          |

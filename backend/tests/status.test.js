@@ -23,6 +23,7 @@ const DEFAULT_FEATURES = [
   'sidebar',
   'search',
   'events',
+  'rules',
 ];
 
 const DEFAULT_COMMUNITY = [

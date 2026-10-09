@@ -22,6 +22,8 @@ ticket_system:
   req_type: sso
   context: https://github.com/Makr91/BoxVault
   fallback_customer_id: ''
+updates:
+  versioninfo_url: https://github.com/Makr91/BoxVault/releases/latest/download/update-info.json
 ssl:
   generate_ssl: true
   cert_path: /etc/boxvault/ssl/public.crt
