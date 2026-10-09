@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.108.0](https://github.com/Makr91/BoxVault/compare/v0.107.1...v0.108.0) (2026-10-09)
+
+
+### Features
+
+* the status lists rules, the update check answers the release's notes and files from the update-info.json every release publishes, and the deploy token describes the split control ([124f8ba](https://github.com/Makr91/BoxVault/commit/124f8bae34b1a0376a0ed13c4d8ae04e28564ef3))
+* the status lists rules, the update check answers the release's notes and files from the update-info.json every release publishes, the deploy token describes the split control, and the unused hyperweaver url setting and its route are gone ([aba0ae7](https://github.com/Makr91/BoxVault/commit/aba0ae750512116356bb16c9de2dc237a05c741f))
+
+
+### Bug Fixes
+
+* bump startcloud-ui to v0.57.0 ([14a707b](https://github.com/Makr91/BoxVault/commit/14a707bbd24f6bbf9731e00aa26602384b7cda6e))
+* bump startcloud-ui to v0.57.0 ([de13a97](https://github.com/Makr91/BoxVault/commit/de13a97d8090a7fda1ad19b52a23f3f22e62ba0a))
+
 ## [0.107.1](https://github.com/Makr91/BoxVault/compare/v0.107.0...v0.107.1) (2026-10-07)
 
 
