@@ -117,26 +117,6 @@ describe('Public configuration endpoints', () => {
     });
   });
 
-  describe('GET /api/config/hyperweaver', () => {
-    it('should answer 404 while not configured', async () => {
-      const res = await request(app).get('/api/config/hyperweaver');
-      expect(res.statusCode).toBe(404);
-    });
-
-    it('should answer the section once configured', async () => {
-      const restore = await updateAppConfig(config => {
-        config.hyperweaver = { url: 'https://hw.example' };
-      });
-      try {
-        const res = await request(app).get('/api/config/hyperweaver');
-        expect(res.statusCode).toBe(200);
-        expect(res.body).toEqual({ hyperweaver: { url: 'https://hw.example' } });
-      } finally {
-        await restore();
-      }
-    });
-  });
-
   describe('writeOnly knobs on the admin config routes', () => {
     let restore;
 

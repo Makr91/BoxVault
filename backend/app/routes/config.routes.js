@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { getGravatarProfile } from '../controllers/config/gravatar.js';
 import { getTicketConfig } from '../controllers/config/ticket.js';
-import { getHyperweaverConfig } from '../controllers/config/hyperweaver.js';
 
 const router = Router();
 
@@ -13,6 +12,5 @@ router.use((req, res, next) => {
 
 router.get('/gravatar/profile/:emailHash', getGravatarProfile);
 router.get('/config/ticket', getTicketConfig);
-router.get('/config/hyperweaver', getHyperweaverConfig);
 
 export default router;

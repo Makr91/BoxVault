@@ -398,7 +398,6 @@
   },
   "config": {
     "gravatarNotFound": "Configuración de Gravatar no encontrada.",
-    "hyperweaverNotConfigured": "Hyperweaver no está configurado.",
     "ticketSystemNotConfigured": "Sistema de tickets no configurado."
   },
   "updates": {

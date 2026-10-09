@@ -207,18 +207,6 @@ properties:
         title: Fallback customer id
         description: Customer id sent with a help ticket when neither the active organization nor the user carries one
         order: 5
-  hyperweaver:
-    type: object
-    section: application
-    subsection: hyperweaverSettings
-    title: Hyperweaver Settings
-    properties:
-      url:
-        type: string
-        default: ''
-        title: Hyperweaver URL
-        description: The base URL of the Hyperweaver UI the Deploy button links to; empty hides the button
-        order: 1
   updates:
     type: object
     section: application
