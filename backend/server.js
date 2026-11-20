@@ -240,7 +240,7 @@ app.use(
         res.setHeader('Content-Type', 'image/x-icon');
       }
       if (basename(filePath) === 'notification-sw.js') {
-        res.setHeader('Service-Worker-Allowed', '/push/');
+        res.setHeader('Service-Worker-Allowed', '/');
       }
     },
   })

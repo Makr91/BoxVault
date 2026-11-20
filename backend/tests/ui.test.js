@@ -109,7 +109,7 @@ describe('The served UI build', () => {
     const worker = await request(app).get('/notification-sw.js');
     expect(worker.statusCode).toBe(200);
     expect(worker.headers['cache-control']).toBe('no-cache');
-    expect(worker.headers['service-worker-allowed']).toBe('/push/');
+    expect(worker.headers['service-worker-allowed']).toBe('/');
   });
 
   it('should answer a browser deep link with index.html no-store', async () => {

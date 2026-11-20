@@ -208,7 +208,7 @@ describe('File API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toBe('application/octet-stream');
-      expect(res.headers['content-disposition']).toContain('attachment; filename="vagrant.box"');
+      expect(res.headers['content-disposition']).toContain('attachment; filename=vagrant.box');
       expect(res.headers['content-length']).toBe(String(fileContent.length));
       expect(res.body).toEqual(fileContent);
     });
