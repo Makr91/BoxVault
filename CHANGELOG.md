@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.108.4](https://github.com/Makr91/BoxVault/compare/v0.108.3...v0.108.4) (2026-11-20)
+
+
+### Bug Fixes
+
+* override minimatch and glob to patched versions and empty the audit allowlists ([eea4980](https://github.com/Makr91/BoxVault/commit/eea498015f300bd37e21972f5ac78cdfcf4d8a20))
+
 ## [0.108.3](https://github.com/Makr91/BoxVault/compare/v0.108.2...v0.108.3) (2026-11-20)
 
 
